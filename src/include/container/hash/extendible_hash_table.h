@@ -80,7 +80,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   /**
    *
    * TODO(P1): Add implementation
-   *
+   *这里应该不考虑哈希碰撞的情况，即不考虑溢出桶
    * @brief Insert the given key-value pair into the hash table.
    * If a key already exists, the value should be updated.
    * If the bucket is full and can't be inserted, do the following steps before retrying:
@@ -104,7 +104,6 @@ class ExtendibleHashTable : public HashTable<K, V> {
    * @return True if the key exists, false otherwise.
    */
   auto Remove(const K &key) -> bool override;
-
   /**
    * Bucket class for each hash table bucket that the directory points to.
    */
@@ -122,7 +121,6 @@ class ExtendibleHashTable : public HashTable<K, V> {
     inline void IncrementDepth() { depth_++; }
 
     inline auto GetItems() -> std::list<std::pair<K, V>> & { return list_; }
-
     /**
      *
      * TODO(P1): Add implementation
@@ -156,7 +154,8 @@ class ExtendibleHashTable : public HashTable<K, V> {
      * @return True if the key-value pair is inserted, false otherwise.
      */
     auto Insert(const K &key, const V &value) -> bool;
-
+    //清空桶中元素
+    auto ClearBucket() -> void {GetItems().clear();}
    private:
     // TODO(student): You may add additional private members and helper functions
     size_t size_;
@@ -192,10 +191,13 @@ class ExtendibleHashTable : public HashTable<K, V> {
    * @return The entry index in the directory.
    */
   auto IndexOf(const K &key) -> size_t;
-
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
+  auto IncrementGlobalDepth() -> void{
+    std::scoped_lock<std::mutex> lock(latch_);
+    global_depth_++; 
+}
 };
 
 }  // namespace bustub
