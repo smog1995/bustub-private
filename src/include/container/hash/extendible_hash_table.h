@@ -80,7 +80,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   /**
    *
    * TODO(P1): Add implementation
-   *
+   *这里应该不考虑哈希碰撞的情况，即不考虑溢出桶
    * @brief Insert the given key-value pair into the hash table.
    * If a key already exists, the value should be updated.
    * If the bucket is full and can't be inserted, do the following steps before retrying:
@@ -196,6 +196,10 @@ class ExtendibleHashTable : public HashTable<K, V> {
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
+  auto IncrementGlobalDepth() -> void{
+    std::scoped_lock<std::mutex> lock(latch_);
+    global_depth_++; 
+}
 };
 
 }  // namespace bustub
