@@ -132,13 +132,44 @@ class LRUKReplacer {
    */
   auto Size() -> size_t;
 
+  /**
+   * class :list Node  
+   */
+  class Node{
+   public:
+      explicit Node(frame_id_t fid_) : timestamp(0), fid(fid_), pre(NULL), next(NULL),accesses(1),evictable(false){}
+      // auto GetFrameid() -> size_t{return fid;}
+      void SetTimeStamp(size_t curtime) : timestamp(curtime)  { }
+      void IncrementAccesses() { accesses++; }
+      auto GetAccesses() -> size_t{ return accesses; }
+   private:
+      frame_id_t fid;
+      bool evictable;
+      size_t timestamp;
+      size_t accesses;
+      Node* pre,*next;
+  };
+  class DoubleList{
+    public:
+     explicit DoubleList();
+     void Enqueue(Node* x) ;
+     void RemoveX(Node* x) ;
+     void Dequeue();
+     auto Size() -> size_t{ return size;}
+
+    private:
+     Node* head,*tail;
+     size_t size;
+  };
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
+  // [[maybe_unused]] size_t current_timestamp_{0};
+  // [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
+  std::unordered_map<frame_id_t,Node*> map;
+  DoubleList DList;
   std::mutex latch_;
 };
 
