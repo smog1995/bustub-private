@@ -154,8 +154,9 @@ class ExtendibleHashTable : public HashTable<K, V> {
      * @return True if the key-value pair is inserted, false otherwise.
      */
     auto Insert(const K &key, const V &value) -> bool;
-    //清空桶中元素
+    // 清空桶中元素
     auto ClearBucket() -> void {GetItems().clear();}
+
    private:
     // TODO(student): You may add additional private members and helper functions
     size_t size_;
@@ -187,9 +188,9 @@ class ExtendibleHashTable : public HashTable<K, V> {
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
-  auto IncrementGlobalDepth() -> void{
+  auto IncrementGlobalDepth() -> void {
     std::scoped_lock<std::mutex> lock(latch_);
-    global_depth_++; 
+    global_depth_++;
 }
 };
 

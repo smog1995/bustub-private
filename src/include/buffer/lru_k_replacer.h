@@ -79,7 +79,7 @@ class LRUKReplacer {
    * Create a new entry for access history if frame id has not been seen before.
    *
    * If frame id is invalid (ie. larger than replacer_size_), throw an exception. You can
-   * also use BUSTUB_ASSERT to abort the process if frame id is invalid.
+   * also use BUSTUB_ASSERT to abort the process if frame id is invalid. 抛出异常或者终止进程
    *
    * @param frame_id id of frame that received a new access.
    */
@@ -95,7 +95,7 @@ class LRUKReplacer {
    * decrement. If a frame was previously non-evictable and is to be set to evictable,
    * then size should increment.
    *
-   * If frame id is invalid, throw an exception or abort the process.
+   * If frame id is invalid, throw an exception or abort the process.  抛出异常或者终止进程
    *
    * For other scenarios, this function should terminate without modifying anything.
    *
@@ -115,7 +115,7 @@ class LRUKReplacer {
    * no matter what its backward k-distance is.
    *
    * If Remove is called on a non-evictable frame, throw an exception or abort the
-   * process.
+   * process. 不可驱逐则抛出异常或者终止进程
    *
    * If specified frame is not found, directly return from this function.
    *
@@ -137,39 +137,46 @@ class LRUKReplacer {
    */
   class Node{
    public:
-      explicit Node(frame_id_t fid_) : timestamp(0), fid(fid_), pre(NULL), next(NULL),accesses(1),evictable(false){}
-      // auto GetFrameid() -> size_t{return fid;}
-      void SetTimeStamp(size_t curtime) : timestamp(curtime)  { }
-      void IncrementAccesses() { accesses++; }
-      auto GetAccesses() -> size_t{ return accesses; }
+     Node* pre, *next;
+     explicit Node(frame_id_t fid_)
+     : pre(nullptr), next(nullptr), timestamp(0), fid(fid_), accesses(0), evictable(false) {}
+     void SetTimeStamp(size_t curtime) { timestamp = curtime; }
+     void IncrementAccesses() { accesses++; }
+     void SetEvictable(bool e) { evictable = e; }
+     auto GetTimestamp() const -> size_t { return timestamp; }
+     auto GetAccesses() const ->  size_t { return accesses; }
+     auto IsEvictable() const ->  bool { return evictable; }
+     auto GetFrameid() const -> size_t { return fid; }
    private:
-      frame_id_t fid;
-      bool evictable;
-      size_t timestamp;
-      size_t accesses;
-      Node* pre,*next;
+    size_t timestamp;
+    frame_id_t fid;
+    size_t accesses;
+    bool evictable;
   };
   class DoubleList{
-    public:
-     explicit DoubleList();
-     void Enqueue(Node* x) ;
-     void RemoveX(Node* x) ;
-     void Dequeue();
-     auto Size() -> size_t{ return size;}
-
-    private:
-     Node* head,*tail;
-     size_t size;
+   public:
+    DoubleList();
+    void Enqueue(Node* x);
+    void RemoveX(Node* x);
+    void InsertX(Node* x);
+    auto Dequeue() -> size_t;
+    auto Size() const -> size_t { return size; }
+    ~DoubleList();
+   private:
+    Node* head, *tail;
+    size_t size;
   };
+
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  // [[maybe_unused]] size_t current_timestamp_{0};
-  // [[maybe_unused]] size_t curr_size_{0};
+  [[maybe_unused]] size_t current_timestamp_{0};
+//   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
-  std::unordered_map<frame_id_t,Node*> map;
-  DoubleList DList;
+  std::unordered_map<frame_id_t, Node*> map;
+  DoubleList InfList;
+  DoubleList KList;
   std::mutex latch_;
 };
 
