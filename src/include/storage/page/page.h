@@ -66,6 +66,11 @@ class Page {
   /** Sets the page LSN. */
   inline void SetLSN(lsn_t lsn) { memcpy(GetData() + OFFSET_LSN, &lsn, sizeof(lsn_t)); }
 
+  /** 设置页的id */
+  inline void SetPageId(page_id_t page_id) { page_id_=page_id; }
+
+  /** 设置脏位 */
+  inline void SetDirty(bool set_dirty) { is_dirty_=set_dirty; }
  protected:
   static_assert(sizeof(page_id_t) == 4);
   static_assert(sizeof(lsn_t) == 4);

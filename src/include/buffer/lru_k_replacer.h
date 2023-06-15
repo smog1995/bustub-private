@@ -133,50 +133,51 @@ class LRUKReplacer {
   auto Size() -> size_t;
 
   /**
-   * class :list Node  
+   * class :list Node
    */
-  class Node{
+  class Node {
    public:
-     Node* pre, *next;
-     explicit Node(frame_id_t fid_)
-     : pre(nullptr), next(nullptr), timestamp(0), fid(fid_), accesses(0), evictable(false) {}
-     void SetTimeStamp(size_t curtime) { timestamp = curtime; }
-     void IncrementAccesses() { accesses++; }
-     void SetEvictable(bool e) { evictable = e; }
-     auto GetTimestamp() const -> size_t { return timestamp; }
-     auto GetAccesses() const ->  size_t { return accesses; }
-     auto IsEvictable() const ->  bool { return evictable; }
-     auto GetFrameid() const -> size_t { return fid; }
+    Node *pre_, *next_;
+    explicit Node(frame_id_t fid)
+        : pre_(nullptr), next_(nullptr), timestamp_(0), frame_id_(fid), accesses_(0), evictable_(true) {}
+    inline void SetTimeStamp(size_t curtime) { timestamp_ = curtime; }
+    inline void IncrementAccesses() { accesses_++; }
+    inline void SetEvictable(bool e) { evictable_ = e; }
+    inline auto GetTimestamp() const -> size_t { return timestamp_; }
+    inline auto GetAccesses() const -> size_t { return accesses_; }
+    inline auto IsEvictable() const -> bool { return evictable_; }
+    inline auto GetFrameid() const -> size_t { return frame_id_; }
+
    private:
-    size_t timestamp;
-    frame_id_t fid;
-    size_t accesses;
-    bool evictable;
+    size_t timestamp_;
+    frame_id_t frame_id_;
+    size_t accesses_;
+    bool evictable_;
   };
-  class DoubleList{
+  class DoubleList {
    public:
     DoubleList();
-    void Enqueue(Node* x);
-    void RemoveX(Node* x);
-    void InsertX(Node* x);
+    void Enqueue(Node *x);
+    void RemoveX(Node *x);
+    void InsertX(Node *x);
     auto Dequeue() -> size_t;
-    auto Size() const -> size_t { return size; }
+    inline auto size() const -> size_t { return size_; }
     ~DoubleList();
+
    private:
-    Node* head, *tail;
-    size_t size;
+    Node *head_, *tail_;
+    size_t size_;
   };
 
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
   [[maybe_unused]] size_t current_timestamp_{0};
-//   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
-  std::unordered_map<frame_id_t, Node*> map;
-  DoubleList InfList;
-  DoubleList KList;
+  std::unordered_map<frame_id_t, Node *> map_;
+  DoubleList inflist_;
+  DoubleList klist_;
   std::mutex latch_;
 };
 

@@ -155,7 +155,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
      */
     auto Insert(const K &key, const V &value) -> bool;
     // 清空桶中元素
-    auto ClearBucket() -> void {GetItems().clear();}
+    auto ClearBucket() -> void { GetItems().clear(); }
 
    private:
     // TODO(student): You may add additional private members and helper functions
@@ -174,7 +174,6 @@ class ExtendibleHashTable : public HashTable<K, V> {
   mutable std::mutex latch_;
   std::vector<std::shared_ptr<Bucket>> dir_;  // The directory of the hash table
 
-
   /*****************************************************************
    * Must acquire latch_ first before calling the below functions. *
    *****************************************************************/
@@ -191,7 +190,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   auto IncrementGlobalDepth() -> void {
     std::scoped_lock<std::mutex> lock(latch_);
     global_depth_++;
-}
+  }
 };
 
 }  // namespace bustub

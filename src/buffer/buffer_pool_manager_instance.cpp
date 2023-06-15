@@ -41,8 +41,24 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
   delete page_table_;
   delete replacer_;
 }
+  /**
+   * 该功能是将页放如页框中，首先看空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id。
+   * 替换旧页需要将其写回磁盘，将新页放入时，需要用setevictalbe为false来钉住该页
+   */
+auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
+  if (free_list_.empty() && !replacer_->Size()) return nullptr;
 
-auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * { return nullptr; }
+  frame_id_t frame_id;
+  page_id_t page_id==AllocatePage();;
+  Page* pages=GetPages();
+  // 如果空闲表中还有位置
+  if (!free_list_.empty()) {
+    frame_id=free_list_.front();
+    free_list_.pop_front();
+    replacer_->RecordAccess(frame_id);
+  }
+  pages[frame_id].SetPageId(page_id);
+}
 
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * { return nullptr; }
 
@@ -51,9 +67,16 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool { return false; }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {}
-
+  /**
+   * 删除指定页面，如果缓冲池中没有该页则直接返回true；如果被pin住则返回false。
+   * 删除页面后在替换策略中停止追踪该页，同事将空下来的页框放到空闲列表中，释放页
+   * 面内存和元数据，最后在磁盘上释放该页，需要调用DeallocatePage() ，但目前没
+   * 有实现，所以仅是做做样子
+   */
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool { return false; }
 
-auto BufferPoolManagerInstance::AllocatePage() -> page_id_t { return next_page_id_++; }
+auto BufferPoolManagerInstance::AllocatePage() -> page_id_t {
+  std::scoped_lock<std::mutex> lock(latch_);
+  return next_page_id_++; }
 
 }  // namespace bustub
