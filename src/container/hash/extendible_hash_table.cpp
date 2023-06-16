@@ -72,7 +72,6 @@ auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
   size_t dir_index = IndexOf(key);
-
   return dir_[dir_index]->Remove(key);
 }
 size_t pow(size_t a, size_t b) {
