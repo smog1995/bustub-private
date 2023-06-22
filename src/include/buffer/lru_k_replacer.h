@@ -52,7 +52,6 @@ class LRUKReplacer {
    *
    * @brief Destroys the LRUReplacer.
    */
-  ~LRUKReplacer();
 
   /**
    * TODO(P1): Add implementation
@@ -159,7 +158,22 @@ class LRUKReplacer {
     size_t size_;
     std::mutex latch_;
   };
-  
+  class ReaderWriterMutex {
+   public:
+    ReaderWriterMutex(size_t count=0) : rw_count_(count) {};
+    auto Count(frame_id_t frame_id) -> size_t;
+    auto Find(frame_id_t frame_id) -> Node*;
+    void Insert(frame_id_t frame_id, Node* page);
+    void Erase(frame_id_t frame_id);
+    ~ReaderWriterMutex();
+
+   private:
+    std::mutex readwrite_;
+    std::mutex mutex_;
+    std::mutex write_first_;
+    size_t rw_count_;
+    std::unordered_map<frame_id_t, Node *> map_;
+  };
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
@@ -168,9 +182,8 @@ class LRUKReplacer {
   [[maybe_unused]] size_t k_;
   DoubleList inflist_;
   DoubleList klist_;
-  std::mutex latch_;
   std::mutex timestamp_lock;
-  std::unordered_map<frame_id_t, Node *> map_;
+  ReaderWriterMutex reader_writer_mutex;
 };
 
 }  // namespace bustub

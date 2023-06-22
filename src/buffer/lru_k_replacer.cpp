@@ -14,13 +14,6 @@ namespace bustub {
 
 LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
 
-LRUKReplacer::~LRUKReplacer() {
-  //这是用于第三个模块buffermanager使用的，当一个节点始终都处于不可驱逐转态，那他不会存在于两条队列中也就不能被释放
-  for (std::unordered_map<frame_id_t, Node *>::iterator it = map_.begin(); it != map_.end(); it++) {
-    if(it->second != nullptr)
-      delete it->second;
-  }
-}
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   if (inflist_.size()) {
@@ -30,23 +23,22 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   } else {
     return false;
   }
-  std::lock_guard<std::mutex> lock(latch_);
-  map_.erase(*frame_id);
+  reader_writer_mutex.Erase(*frame_id);
   return true;
 }
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
-  Node *x;
+  Node *x = nullptr;
   timestamp_lock.lock();
   current_timestamp_++;
   timestamp_lock.unlock();
   if ((size_t)frame_id > replacer_size_ || frame_id < 0) throw "invalid frame_id!";
-  if (!map_.count(frame_id)) {
+  if (!reader_writer_mutex.Count(frame_id)) {
     x = new Node(frame_id);
     x->accesses_++;
-    map_[frame_id] = x;
+    reader_writer_mutex.Insert(frame_id, x);
   } else {
-    x = map_[frame_id];
+    x = reader_writer_mutex.Find(frame_id);
     x->accesses_++;
     x->timestamp_ = current_timestamp_;
     if (!x->evictable_) {
@@ -69,9 +61,9 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
-  if (!map_.count(frame_id)) return;
+  if (!reader_writer_mutex.Count(frame_id)) return;
   if ((size_t)frame_id > replacer_size_ || frame_id < 0) throw "invalid frame_id!";
-  Node *x = map_[frame_id];
+  Node *x = reader_writer_mutex.Find(frame_id);
   if (set_evictable == x->evictable_) {
     return;
   } else if (set_evictable) {  // 如果是设置为可驱逐，则将该页框放入可驱逐队列
@@ -91,10 +83,10 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
-  if (!map_.count(frame_id)) return;
-  Node *x = map_[frame_id];
+  if (!reader_writer_mutex.Count(frame_id)) return;
+  Node* x = reader_writer_mutex.Find(frame_id);
   if (!x->evictable_) throw "invalid frame_id!";
-  map_.erase(frame_id);
+  reader_writer_mutex.Erase(frame_id);
   if (x->accesses_ >= k_)
     klist_.RemoveX(x);
   else
@@ -177,4 +169,70 @@ auto LRUKReplacer::DoubleList::Dequeue() -> size_t {
   return frame_id;
 }
 
+//===----------------------------------------------------------===//
+// ReadWriteMutex
+//===----------------------------------------------------------===//
+
+LRUKReplacer::ReaderWriterMutex::~ReaderWriterMutex() {
+  //这是用于第三个模块buffermanager使用的，当一个节点始终都处于不可驱逐转态，那他不会存在于两条队列中也就不能被释放
+  for (std::unordered_map<frame_id_t, Node *>::iterator it = map_.begin(); it != map_.end(); it++) {
+    if(it->second != nullptr)
+      delete it->second;
+  }
+}
+auto LRUKReplacer::ReaderWriterMutex::Count(frame_id_t frame_id) -> size_t {
+  write_first_.lock();
+  mutex_.lock();
+  if(!rw_count_) {
+    readwrite_.lock();
+  }
+  rw_count_++;
+  mutex_.unlock();
+  write_first_.unlock();
+  //读count
+  size_t c=map_.count(frame_id); 
+  mutex_.lock();
+  rw_count_--;
+  if(!rw_count_)
+    readwrite_.unlock();
+  mutex_.unlock();
+  return c;
+}
+
+auto LRUKReplacer::ReaderWriterMutex::Find(frame_id_t frame_id) -> Node* {
+  write_first_.lock();
+  mutex_.lock();
+  if(!rw_count_) {
+    readwrite_.lock();
+  }
+  rw_count_++;
+  mutex_.unlock();
+  write_first_.unlock();
+  //读page
+  Node* page=map_[frame_id];
+  mutex_.lock();  
+  rw_count_--;
+  if(!rw_count_)
+    readwrite_.unlock();
+  mutex_.unlock();
+  return page;
+}
+
+void LRUKReplacer::ReaderWriterMutex::Insert(frame_id_t frame_id,Node* page) {
+  write_first_.lock();
+  readwrite_.lock();
+  map_[frame_id] = page;
+  readwrite_.unlock();
+  write_first_.unlock();
+}
+void LRUKReplacer::ReaderWriterMutex::Erase(frame_id_t frame_id) {
+  write_first_.lock();
+  readwrite_.lock();
+  map_.erase(frame_id);
+  readwrite_.unlock();
+  write_first_.unlock();
+}
+
 }  // namespace bustub
+
+
