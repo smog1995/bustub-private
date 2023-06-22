@@ -52,7 +52,7 @@ class LRUKReplacer {
    *
    * @brief Destroys the LRUReplacer.
    */
-  ~LRUKReplacer() = default;
+  ~LRUKReplacer();
 
   /**
    * TODO(P1): Add implementation
@@ -135,24 +135,14 @@ class LRUKReplacer {
   /**
    * class :list Node
    */
-  class Node {
-   public:
-    Node *pre_, *next_;
-    explicit Node(frame_id_t fid)
-        : pre_(nullptr), next_(nullptr), timestamp_(0), frame_id_(fid), accesses_(0), evictable_(true) {}
-    inline void SetTimeStamp(size_t curtime) { timestamp_ = curtime; }
-    inline void IncrementAccesses() { accesses_++; }
-    inline void SetEvictable(bool e) { evictable_ = e; }
-    inline auto GetTimestamp() const -> size_t { return timestamp_; }
-    inline auto GetAccesses() const -> size_t { return accesses_; }
-    inline auto IsEvictable() const -> bool { return evictable_; }
-    inline auto GetFrameid() const -> size_t { return frame_id_; }
-
-   private:
+  struct Node{
+    Node* pre_,*next_;
     size_t timestamp_;
     frame_id_t frame_id_;
     size_t accesses_;
     bool evictable_;
+    explicit Node(frame_id_t fid)
+        : pre_(nullptr), next_(nullptr), timestamp_(0), frame_id_(fid), accesses_(0), evictable_(false) {}
   };
   class DoubleList {
    public:
@@ -167,18 +157,20 @@ class LRUKReplacer {
    private:
     Node *head_, *tail_;
     size_t size_;
+    std::mutex latch_;
   };
-
+  
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
   [[maybe_unused]] size_t current_timestamp_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
-  std::unordered_map<frame_id_t, Node *> map_;
   DoubleList inflist_;
   DoubleList klist_;
   std::mutex latch_;
+  std::mutex timestamp_lock;
+  std::unordered_map<frame_id_t, Node *> map_;
 };
 
 }  // namespace bustub

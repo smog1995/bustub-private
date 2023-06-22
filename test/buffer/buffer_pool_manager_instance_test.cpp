@@ -23,7 +23,7 @@ namespace bustub {
 
 // NOLINTNEXTLINE
 // Check whether pages containing terminal characters can be recovered
-TEST(BufferPoolManagerInstanceTest, DISABLED_BinaryDataTest) {
+TEST(BufferPoolManagerInstanceTest, BinaryDataTest) {
   const std::string db_name = "test.db";
   const size_t buffer_pool_size = 10;
   const size_t k = 5;
@@ -54,6 +54,7 @@ TEST(BufferPoolManagerInstanceTest, DISABLED_BinaryDataTest) {
 
   // Scenario: Once we have a page, we should be able to read and write content.
   std::memcpy(page0->GetData(), random_binary_data, BUSTUB_PAGE_SIZE);
+  std::cout<<random_binary_data<<std::endl;
   EXPECT_EQ(0, std::memcmp(page0->GetData(), random_binary_data, BUSTUB_PAGE_SIZE));
 
   // Scenario: We should be able to create new pages until we fill up the buffer pool.
@@ -77,6 +78,7 @@ TEST(BufferPoolManagerInstanceTest, DISABLED_BinaryDataTest) {
   }
   // Scenario: We should be able to fetch the data we wrote a while ago.
   page0 = bpm->FetchPage(0);
+  std::cout<<"id:"<<page0->GetPageId()<<"xiayi"<<page0->GetData()<<std::endl;
   EXPECT_EQ(0, memcmp(page0->GetData(), random_binary_data, BUSTUB_PAGE_SIZE));
   EXPECT_EQ(true, bpm->UnpinPage(0, true));
 
@@ -89,7 +91,7 @@ TEST(BufferPoolManagerInstanceTest, DISABLED_BinaryDataTest) {
 }
 
 // NOLINTNEXTLINE
-TEST(BufferPoolManagerInstanceTest, DISABLED_SampleTest) {
+TEST(BufferPoolManagerInstanceTest, SampleTest) {
   const std::string db_name = "test.db";
   const size_t buffer_pool_size = 10;
   const size_t k = 5;
