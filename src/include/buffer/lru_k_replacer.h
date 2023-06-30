@@ -15,6 +15,7 @@
 #include <limits>
 #include <list>
 #include <mutex>  // NOLINT
+#include <shared_mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -44,6 +45,8 @@ class LRUKReplacer {
    * @param num_frames the maximum number of frames the LRUReplacer will be required to store
    */
   explicit LRUKReplacer(size_t num_frames, size_t k);
+
+  ~LRUKReplacer();
 
   DISALLOW_COPY_AND_MOVE(LRUKReplacer);
 
@@ -134,8 +137,8 @@ class LRUKReplacer {
   /**
    * class :list Node
    */
-  struct Node{
-    Node* pre_,*next_;
+  struct Node {
+    Node *pre_, *next_;
     size_t timestamp_;
     frame_id_t frame_id_;
     size_t accesses_;
@@ -150,30 +153,16 @@ class LRUKReplacer {
     void RemoveX(Node *x);
     void InsertX(Node *x);
     auto Dequeue() -> size_t;
-    inline auto size() const -> size_t { return size_; }
+    inline auto Size() -> size_t;
     ~DoubleList();
+    void PrintList() const;
 
    private:
     Node *head_, *tail_;
     size_t size_;
     std::mutex latch_;
   };
-  class ReaderWriterMutex {
-   public:
-    ReaderWriterMutex(size_t count=0) : rw_count_(count) {};
-    auto Count(frame_id_t frame_id) -> size_t;
-    auto Find(frame_id_t frame_id) -> Node*;
-    void Insert(frame_id_t frame_id, Node* page);
-    void Erase(frame_id_t frame_id);
-    ~ReaderWriterMutex();
 
-   private:
-    std::mutex readwrite_;
-    std::mutex mutex_;
-    std::mutex write_first_;
-    size_t rw_count_;
-    std::unordered_map<frame_id_t, Node *> map_;
-  };
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
@@ -182,8 +171,9 @@ class LRUKReplacer {
   [[maybe_unused]] size_t k_;
   DoubleList inflist_;
   DoubleList klist_;
-  std::mutex timestamp_lock;
-  ReaderWriterMutex reader_writer_mutex;
+  std::mutex timestamp_lock_;
+  std::mutex latch_;
+  std::unordered_map<frame_id_t, Node *> map_;
 };
 
 }  // namespace bustub

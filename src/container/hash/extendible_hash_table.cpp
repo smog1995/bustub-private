@@ -55,12 +55,12 @@ template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetLocalDepth(int dir_index) const -> int {
   size_t depth;
   std::scoped_lock<std::mutex> lock(latch_);
-  if (!dir_.empty()  && (dir_index >= 0 && dir_index < static_cast<int>(Pow(2, global_depth_)))) {
+  if (!dir_.empty() && (dir_index >= 0 && dir_index < static_cast<int>(Pow(2, global_depth_)))) {
     depth = GetLocalDepthInternal(dir_index);
   } else {
     depth = 0;
   }
-  PrintAll();
+  // PrintAll();
   return depth;
 }
 
@@ -72,7 +72,7 @@ auto ExtendibleHashTable<K, V>::GetLocalDepthInternal(int dir_index) const -> in
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetNumBuckets() const -> int {
   std::scoped_lock<std::mutex> lock(latch_);
-  PrintAll();
+  // PrintAll();
   return GetNumBucketsInternal();
 }
 
@@ -85,13 +85,13 @@ template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
   std::scoped_lock<std::mutex> lock(latch_);
   bool result;
-  if (dir_.empty() ) {
+  if (dir_.empty()) {
     result = false;
   } else {
     size_t dir_index = IndexOf(key);
     result = dir_[dir_index]->Find(key, value);
   }
-  PrintAll();
+  // PrintAll();
   return result;
 }
 
@@ -99,7 +99,7 @@ template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
   std::scoped_lock<std::mutex> lock(latch_);
   bool result;
-  if (dir_.empty() ) {
+  if (dir_.empty()) {
     result = false;
   } else {
     size_t dir_index = IndexOf(key);
@@ -110,7 +110,7 @@ auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
   std::scoped_lock<std::mutex> lock(latch_);
-  if (dir_.empty() ) {
+  if (dir_.empty()) {
     std::shared_ptr<Bucket> p(new Bucket(bucket_size_, 0));
     dir_.push_back(p);
   }
@@ -119,7 +119,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
 
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
-  std::cout << "insert" << key << std::endl;
+  // std::cout << "insert" << key << std::endl;
   size_t dir_index = IndexOf(key);
   if (dir_[dir_index]->Insert(key, value) == false) {
     bool flag = false;
@@ -176,7 +176,7 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
 }
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::PrintAll() const {
-  if (dir_.empty() ) {
+  if (dir_.empty()) {
     return;
   }
   int num = Pow(2, global_depth_);

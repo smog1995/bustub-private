@@ -41,13 +41,13 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
   delete page_table_;
   delete replacer_;
 }
-  /**
-   * 该功能是将页放如页框中
-   * 1.如果空闲表没有位置，替换策略中发现所有页框都上了锁，表示失败直接返回空指针
-   * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id。
-   * 3.旧页刷脏，set_evictalbe为false将该页pin住，同时将新页的数据重置（这里没有放新数据我不太理解），
-   *   哈希表映射页->页框
-   */
+/**
+ * 该功能是将页放如页框中
+ * 1.如果空闲表没有位置，替换策略中发现所有页框都上了锁，表示失败直接返回空指针
+ * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id。
+ * 3.旧页刷脏，set_evictalbe为false将该页pin住，同时将新页的数据重置（这里没有放新数据我不太理解），
+ *   哈希表映射页->页框
+ */
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   if (free_list_.empty() && !replacer_->Size()) return nullptr;
 
@@ -56,10 +56,9 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   if (!free_list_.empty()) {
     frame_id = free_list_.front();
     free_list_.pop_front();
-  } else { 
+  } else {
     replacer_->Evict(&frame_id);
-    if (pages_[frame_id].is_dirty_)
-      disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    if (pages_[frame_id].is_dirty_) disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
   }
   // 这里其实即使是同一个页框，也需要重新进行记录，因为该页框放的已经不是同一份数据（页）
   replacer_->RecordAccess(frame_id);
@@ -68,49 +67,45 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   pages_[frame_id].page_id_ = new_page_id;
   page_table_->Insert(new_page_id, frame_id);
   *page_id = new_page_id;
-  return pages_+frame_id;
+  return pages_ + frame_id;
 }
 /**
-  * 1.从缓冲区中查询是否有该页(哈希表查找)有直接返回;如果没有，则需要从从磁盘调页，用readpage函数来获取
-  * 2.如果缓冲区中的页框都被使用和锁上，此时返回空指针表示失败
-  * 3.放页策略依旧时首先找是否存在空页框，如果没有再用replacer
-  * 4.刷脏，pin住该页，哈希表映射页->页框
+ * 1.从缓冲区中查询是否有该页(哈希表查找)有直接返回;如果没有，则需要从从磁盘调页，用readpage函数来获取
+ * 2.如果缓冲区中的页框都被使用和锁上，此时返回空指针表示失败
+ * 3.放页策略依旧时首先找是否存在空页框，如果没有再用replacer
+ * 4.刷脏，pin住该页，哈希表映射页->页框
  */
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   frame_id_t frame_id;
   if (page_table_->Find(page_id, frame_id)) {
-    return pages_+frame_id;
-  }
-  else if (free_list_.empty() && !replacer_->Size()) {
+    return pages_ + frame_id;
+  } else if (free_list_.empty() && !replacer_->Size()) {
     return nullptr;
   }
-  if (!free_list_.empty())
-  {
+  if (!free_list_.empty()) {
     frame_id = free_list_.front();
     free_list_.pop_front();
   } else {
     replacer_->Evict(&frame_id);
-    if (pages_[frame_id].is_dirty_)
-      disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    if (pages_[frame_id].is_dirty_) disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
   }
   pages_[frame_id].page_id_ = page_id;
-  disk_manager_->ReadPage(page_id,pages_[frame_id].data_);
+  disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
   replacer_->RecordAccess(frame_id);
   pages_[frame_id].pin_count_++;
   page_table_->Insert(page_id, frame_id);
-  return pages_+frame_id;
+  return pages_ + frame_id;
 }
 
 /**
- *  
+ *
  */
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
   frame_id_t frame_id;
-  if (page_table_->Find(page_id, frame_id) && pages_[frame_id].pin_count_>0) {
+  if (page_table_->Find(page_id, frame_id) && pages_[frame_id].pin_count_ > 0) {
     pages_[frame_id].pin_count_--;
     pages_[frame_id].is_dirty_ = is_dirty;
-    if (pages_[frame_id].pin_count_ <= 0)
-    {
+    if (pages_[frame_id].pin_count_ <= 0) {
       replacer_->SetEvictable(frame_id, true);
       page_table_->Remove(page_id);
     }
@@ -121,32 +116,30 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
 
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   frame_id_t frame_id;
-  if (!page_table_->Find(page_id, frame_id))
-    return false;
+  if (!page_table_->Find(page_id, frame_id)) return false;
   disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
   pages_[frame_id].is_dirty_ = false;
   return true;
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
-  for(size_t index = 0; index < pool_size_; index++) {
+  for (size_t index = 0; index < pool_size_; index++) {
     if (pages_[index].page_id_ != INVALID_PAGE_ID) {
       disk_manager_->WritePage(pages_[index].page_id_, pages_[index].data_);
       pages_[index].is_dirty_ = false;
     }
   }
 }
-  /**
-   * 删除指定页面，如果缓冲池中没有该页则直接返回true；如果被pin住则返回false。
-   * 删除页面后在替换策略中停止追踪该页，同事将空下来的页框放到空闲列表中，释放页
-   * 面内存和元数据，最后在磁盘上释放该页，需要调用DeallocatePage() ，但目前没
-   * 有实现，所以仅是做做样子
-   */
+/**
+ * 删除指定页面，如果缓冲池中没有该页则直接返回true；如果被pin住则返回false。
+ * 删除页面后在替换策略中停止追踪该页，同事将空下来的页框放到空闲列表中，释放页
+ * 面内存和元数据，最后在磁盘上释放该页，需要调用DeallocatePage() ，但目前没
+ * 有实现，所以仅是做做样子
+ */
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
   frame_id_t frame_id;
-  if (!page_table_->Find(page_id, frame_id))
-    return true;
-  if(pages_[frame_id].pin_count_ > 0) {
+  if (!page_table_->Find(page_id, frame_id)) return true;
+  if (pages_[frame_id].pin_count_ > 0) {
     free_list_.push_back(frame_id);
     replacer_->Remove(frame_id);
     pages_[frame_id].ResetMemory();
@@ -156,10 +149,6 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
   return false;
 }
 
-auto BufferPoolManagerInstance::AllocatePage() -> page_id_t {
-  return next_page_id_++;
-}
+auto BufferPoolManagerInstance::AllocatePage() -> page_id_t { return next_page_id_++; }
 
 }  // namespace bustub
-
-
