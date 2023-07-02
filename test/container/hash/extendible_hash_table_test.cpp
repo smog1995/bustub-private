@@ -16,11 +16,16 @@ TEST(ExtendibleHashTableTest, SampleTest) {
   table->Insert(1, "a");
   table->Insert(2, "b");
   table->Insert(3, "c");
+  table->PrintAll();
   table->Insert(4, "d");
   table->Insert(5, "e");
+  table->PrintAll();
   table->Insert(6, "f");
+  table->PrintAll();
   table->Insert(7, "g");
+  table->PrintAll();
   table->Insert(8, "h");
+  table->PrintAll();
   table->Insert(9, "i");
   EXPECT_EQ(2, table->GetLocalDepth(0));
   EXPECT_EQ(3, table->GetLocalDepth(1));
@@ -41,6 +46,26 @@ TEST(ExtendibleHashTableTest, SampleTest) {
   EXPECT_TRUE(table->Remove(1));
   EXPECT_FALSE(table->Remove(20));
 }
+// TEST(ExtendibleHashTableTest, SampleTest2) {
+//   auto table = std::make_unique<ExtendibleHashTable<int, int>>(2);
+
+//   for(int i = 0; i < 200; i++) {
+//     // int key = rand() % 300;
+//     table->Insert(i, i);
+//     table->PrintAll();
+//   }
+// }
+
+TEST(ExtendibleHashTableTest, SampleTest3) {
+  auto table = std::make_unique<ExtendibleHashTable<int, int>>(2);
+
+  for (int i = 0; i < 200; i++) {
+    // int key = rand() % 300;
+    // std::cout<<"Insert:"<<key<<std::endl;
+    table->Insert(i, i);
+    table->PrintAll();
+  }
+}
 
 TEST(ExtendibleHashTableTest, ConcurrentInsertTest) {
   const int num_runs = 50;
@@ -57,6 +82,7 @@ TEST(ExtendibleHashTableTest, ConcurrentInsertTest) {
     }
     for (int i = 0; i < num_threads; i++) {
       threads[i].join();
+      // table->PrintAll();
     }
 
     EXPECT_EQ(table->GetGlobalDepth(), 1);
