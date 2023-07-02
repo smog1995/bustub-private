@@ -15,7 +15,6 @@
 #include <list>
 #include <mutex>  // NOLINT
 #include <unordered_map>
-
 #include "buffer/buffer_pool_manager.h"
 #include "buffer/lru_k_replacer.h"
 #include "common/config.h"
@@ -105,7 +104,7 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    *
    * @brief Unpin the target page from the buffer pool. If page_id is not in the buffer pool or its pin count is already
    * 0, return false.
-   *  减少目标页的pin计数器，当计数器到达0时，该页需要在替换策略中设置为可驱逐状态。同时，如果该页被修改过需要设置脏标志，取决于is_dirty
+   * 减少目标页的pin计数器，当计数器到达0时，该页需要在替换策略中设置为可驱逐状态。同时，如果该页被修改过需要设置脏标志，取决于is_dirty
    * Decrement the pin count of a page. If the pin count reaches 0, the frame should be evictable by the replacer.
    * Also, set the dirty flag on the page to indicate if the page was modified.
    *
@@ -172,7 +171,6 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   std::list<frame_id_t> free_list_;
   /** This latch protects shared data structures. We recommend updating this comment to describe what it protects. */
   std::mutex latch_;
-
   /**
    * 在磁盘上获取页，需要用到锁
    * @brief Allocate a page on disk. Caller should acquire the latch before calling this function.

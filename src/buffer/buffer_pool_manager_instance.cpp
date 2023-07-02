@@ -11,7 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager_instance.h"
-
+#include <iostream>
+#include <shared_mutex>
 #include "common/exception.h"
 #include "common/macros.h"
 
@@ -44,12 +45,17 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 /**
  * 该功能是将页放如页框中
  * 1.如果空闲表没有位置，替换策略中发现所有页框都上了锁，表示失败直接返回空指针
- * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id。
- * 3.旧页刷脏，set_evictalbe为false将该页pin住，同时将新页的数据重置（这里没有放新数据我不太理解），
- *   哈希表映射页->页框
+ * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id,；
+ * 3.使用替换策略时需要看脏位来考虑旧页写回磁盘，set_evictalbe为false将该页pin住，哈希表映射页->页框
+ *   
  */
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
-  if (free_list_.empty() && !replacer_->Size()) return nullptr;
+  std::lock_guard<std::mutex> lock(latch_);
+  // std::cout << "NewPgImp:";
+  if (free_list_.empty() && replacer_->Size() == 0) {
+    // std::cout << "freelist is full and all frames are pinned." << std::endl;
+    return nullptr;
+  }
 
   frame_id_t frame_id;
   page_id_t new_page_id = AllocatePage();
@@ -58,11 +64,15 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     free_list_.pop_front();
   } else {
     replacer_->Evict(&frame_id);
-    if (pages_[frame_id].is_dirty_) disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    page_table_->Remove(pages_[frame_id].page_id_);
+    if (pages_[frame_id].is_dirty_) {
+      disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    }
   }
   // 这里其实即使是同一个页框，也需要重新进行记录，因为该页框放的已经不是同一份数据（页）
   replacer_->RecordAccess(frame_id);
   pages_[frame_id].pin_count_++;
+  pages_[frame_id].is_dirty_ = false;
   pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = new_page_id;
   page_table_->Insert(new_page_id, frame_id);
@@ -76,10 +86,21 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
  * 4.刷脏，pin住该页，哈希表映射页->页框
  */
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
+  std::lock_guard<std::mutex> lock(latch_);
+  // std::cout << "fetchpgImp:" << page_id;
   frame_id_t frame_id;
   if (page_table_->Find(page_id, frame_id)) {
+    // std::cout << " it exists in buffer pool ,return it." << std::endl;
+    pages_[frame_id].pin_count_++;
+    replacer_->RecordAccess(frame_id);
+    // 重新被pin住，需要设置为不可驱逐
+    if (pages_[frame_id].pin_count_ == 1) {
+      replacer_->SetEvictable(frame_id, false);
+    }
     return pages_ + frame_id;
-  } else if (free_list_.empty() && !replacer_->Size()) {
+  }
+  if (free_list_.empty() && replacer_->Size() == 0) {
+    // std::cout << " it doesn't exists in buffer pool, and freelist is full and all frames are pinned." << std::endl;
     return nullptr;
   }
   if (!free_list_.empty()) {
@@ -87,9 +108,14 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     free_list_.pop_front();
   } else {
     replacer_->Evict(&frame_id);
-    if (pages_[frame_id].is_dirty_) disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    page_table_->Remove(pages_[frame_id].page_id_);
+    if (pages_[frame_id].is_dirty_) {
+      disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
+    }
   }
+  // std::cout << " it doesn't exists in buffer pool,new frame_id is:" << frame_id << std::endl;
   pages_[frame_id].page_id_ = page_id;
+  pages_[frame_id].is_dirty_ = false;
   disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
   replacer_->RecordAccess(frame_id);
   pages_[frame_id].pin_count_++;
@@ -101,28 +127,40 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
  *
  */
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
   frame_id_t frame_id;
   if (page_table_->Find(page_id, frame_id) && pages_[frame_id].pin_count_ > 0) {
     pages_[frame_id].pin_count_--;
-    pages_[frame_id].is_dirty_ = is_dirty;
+    if (!pages_[frame_id].is_dirty_) {
+      pages_[frame_id].is_dirty_ = is_dirty;
+    }
     if (pages_[frame_id].pin_count_ <= 0) {
       replacer_->SetEvictable(frame_id, true);
-      page_table_->Remove(page_id);
     }
+    // std::cout << "unpinpgimp success:" << page_id << " is_dirty:" << is_dirty << std::endl;
     return true;
   }
+  // std::cout << "unpinpgimp failed:" << page_id << std::endl;
   return false;
 }
 
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
+  // std::cout << "flushPgImp:" << page_id;
   frame_id_t frame_id;
-  if (!page_table_->Find(page_id, frame_id)) return false;
+  if (!page_table_->Find(page_id, frame_id)) {
+    // std::cout << "this page doesnt exists in buffer pool." << std::endl;
+    return false;
+  }
   disk_manager_->WritePage(pages_[frame_id].page_id_, pages_[frame_id].data_);
   pages_[frame_id].is_dirty_ = false;
+  // std::cout << "write to disk success." << std::endl;
   return true;
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
+  std::lock_guard<std::mutex> lock(latch_);
+  // std::cout << "flushallpgsimp" << std::endl;
   for (size_t index = 0; index < pool_size_; index++) {
     if (pages_[index].page_id_ != INVALID_PAGE_ID) {
       disk_manager_->WritePage(pages_[index].page_id_, pages_[index].data_);
@@ -137,9 +175,15 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
  * 有实现，所以仅是做做样子
  */
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
   frame_id_t frame_id;
-  if (!page_table_->Find(page_id, frame_id)) return true;
-  if (pages_[frame_id].pin_count_ > 0) {
+  // std::cout << "deletePgImp:" << page_id;
+  if (!page_table_->Find(page_id, frame_id)) {
+    // std::cout << " it doesnt exists in buffer pool." << std::endl;
+    return true;
+  }
+  if (pages_[frame_id].pin_count_ <= 0) {
+    // std::cout << " result: delete success!" << std::endl;
     free_list_.push_back(frame_id);
     replacer_->Remove(frame_id);
     pages_[frame_id].ResetMemory();

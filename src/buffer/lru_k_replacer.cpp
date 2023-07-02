@@ -11,138 +11,147 @@
 //===----------------------------------------------------------------------===//
 #include "buffer/lru_k_replacer.h"
 #include <iostream>
-#include <ostream>
 #include "shared_mutex"
 namespace bustub {
 
-LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
+LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {
+  // std::cout << "size:" << replacer_size_ << std::endl;
+}
 
 LRUKReplacer::~LRUKReplacer() {
-  for (auto it : map_) {
+  for (auto &it : map_) {
     delete it.second;
   }
+  // std::cout << "LRU析构,map中的元素为" << map_.size() << std::endl;
 }
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   std::lock_guard<std::mutex> lock(latch_);
   if (inflist_.Size() > 0) {
     *frame_id = inflist_.Dequeue();
-    inflist_.PrintList();
+    // std::cout << "inf队列：";
+    // inflist_.PrintList();
+    // std::cout << "k队列：";
+    // klist_.PrintList();
   } else if (klist_.Size() > 0) {
     *frame_id = klist_.Dequeue();
-    klist_.PrintList();
+    // std::cout << "inf队列：";
+    // inflist_.PrintList();
+    // std::cout << "k队列：";
+    // klist_.PrintList();
   } else {
-    std::cout << "evict失败，无可驱逐的页" << std::endl;
+    // std::cout << "evict失败，无可驱逐的页" << std::endl;
     return false;
   }
   map_.erase(*frame_id);
-  std::cout << "evict:" << *frame_id << std::endl;
+  // std::cout << "evict: " << *frame_id << std::endl;
   return true;
 }
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
   std::lock_guard<std::mutex> lock(latch_);
-  std::cout << "recordaccess:" << frame_id << "结果：";
+  // std::cout << "recordaccess:" << frame_id << "结果：";
   Node *x = nullptr;
-  timestamp_lock_.lock();
   current_timestamp_++;
-  timestamp_lock_.unlock();
-  if (static_cast<size_t>(frame_id) > replacer_size_ || frame_id < 0) {
-    std::cout << " 无效页id!" << std::endl;
+  if (static_cast<size_t>(frame_id) >= replacer_size_ || frame_id < 0) {
+    // std::cout << " 无效页id!" << std::endl;
     throw "invalid frame_id!";
   }
   if (map_.count(frame_id) == 0) {
     x = new Node(frame_id);
     x->accesses_++;
+    x->timestamp_ = current_timestamp_;
     map_[frame_id] = x;
-    std::cout << " 该页为初次进lruK" << std::endl;
+    // std::cout << " 该页为初次进lruK" << std::endl;
   } else {
     x = map_[frame_id];
     x->accesses_++;
-    x->timestamp_ = current_timestamp_;
-    std::cout << "该页不为初次进lruk";
+    // std::cout << "该页不为初次进lruk";
     if (!x->evictable_) {
-      std::cout << " 但被pin住，不能驱逐" << std::endl;
+      // std::cout << " 但被pin住，不进驱逐队列" << std::endl;
+      if (x->accesses_ >= k_) {
+        x->timestamp_ = current_timestamp_;
+      }
       // 如果是不可驱逐的，则直接结束
       return;
     }
     if (x->accesses_ == k_) {
-      std::cout << " 等于k次，直接移出inf队列，转到klist队列";
       // 从inflist_移到klist_
+      x->timestamp_ = current_timestamp_;
+      // std::cout << " 等于k次，直接移出inf队列，转到klist队列";
       inflist_.RemoveX(x);
       klist_.Enqueue(x);
     } else if (x->accesses_ < k_) {
       // 将其移到inflist_队尾
-      std::cout << "小于k次，放到inf队列即挪到inf队尾";
+      // std::cout << "小于k次，放到inf队列即挪到inf队尾";
       inflist_.RemoveX(x);
       inflist_.Enqueue(x);
     } else {
       // 将其移到klist_队尾
-      std::cout << "大于k次，放到k队列即挪到k队尾";
+      x->timestamp_ = current_timestamp_;
+      // std::cout << "大于k次，放到k队列即挪到k队尾";
       klist_.RemoveX(x);
       klist_.Enqueue(x);
     }
   }
-  std::cout << std::endl;
+  // std::cout << std::endl;
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   std::lock_guard<std::mutex> lock(latch_);
-  std::cout << "setevictable:" << frame_id << "set为：" << set_evictable;
+  // std::cout << "setevictable:" << frame_id << "set as:" << set_evictable;
   if (map_.count(frame_id) == 0) {
-    std::cout << "找不到该页" << std::endl;
+    // std::cout << "this frame is not found." << std::endl;
     return;
   }
-  if (static_cast<size_t>(frame_id) > replacer_size_ || frame_id < 0) {
-    std::cout << "无效页数" << std::endl;
+  if (static_cast<size_t>(frame_id) >= replacer_size_ || frame_id < 0) {
+    // std::cout << "invalid frame_id!" << std::endl;
     throw "invalid frame_id!";
   }
   Node *x = map_[frame_id];
   if (set_evictable == x->evictable_) {
-    std::cout << "和上次设置的一样" << std::endl;
+    // std::cout << "set the same as last." << std::endl;
     return;
   }
   if (set_evictable) {  // 如果是设置为可驱逐，则将该页框放入可驱逐队列
-    std::cout << "<<k的值为:" << k_ << ">>";
+    // std::cout << "<<k's value is:" << k_ << ">>";
     // 如果访问次数达到k,直接插入klist_
     if (x->accesses_ >= k_) {
-      std::cout << "访问次数达k次以上，插入k队";
+      // std::cout << "accesses larger or equal to k，insert into klist.";
       klist_.InsertX(x);
     } else {
-      std::cout << "访问次数k次以下，插入inf队";
+      // std::cout << "accesses smaller than k，insert into inflist.";
       inflist_.InsertX(x);  // 否则插入inflist_
     }
   } else {  // 如果是设置为不可驱逐，则需要移出可驱逐队列
-    std::cout << " 被设置为不可驱逐 ";
+    // std::cout << " set as not_evictable ";
     if (x->accesses_ >= k_) {
-      std::cout << "访问次数达大于等于k次，移出k队";
+      // std::cout << "accesses larger or equal to k， remove from klist.";
       klist_.RemoveX(x);
     } else {
-      std::cout << "小于等于k次，移出inf队";
+      // std::cout << "accesses smaller than k， remove from inflist.";
       inflist_.RemoveX(x);
     }
   }
   x->evictable_ = set_evictable;
-  std::cout << std::endl;
+  // std::cout << std::endl;
 }
 void LRUKReplacer::Remove(frame_id_t frame_id) {
   std::lock_guard<std::mutex> lock(latch_);
-  std::cout << "remove:" << frame_id;
+  // std::cout << "remove:" << frame_id;
   if (map_.count(frame_id) == 0) {
-    std::cout << "找不到该页" << std::endl;
+    // std::cout << "this frame is not found." << std::endl;
     return;
   }
   Node *x = map_[frame_id];
   if (!x->evictable_) {
-    std::cout << "不可移除" << std::endl;
+    // std::cout << "the frame is not evictable" << std::endl;
     throw "invalid frame_id!";
   }
   map_.erase(frame_id);
   if (x->accesses_ >= k_) {
-    std::cout << "访问次数达k次以上，在k队" << std::endl;
     klist_.RemoveX(x);
   } else {
-    std::cout << "访问次数k次一下，在inf队" << std::endl;
     inflist_.RemoveX(x);
   }
   delete x;
@@ -194,7 +203,7 @@ void LRUKReplacer::DoubleList::Enqueue(Node *x) {
 }
 void LRUKReplacer::DoubleList::InsertX(Node *x) {
   // 假设链表为空，直接插入即可
-  if (Size() == 0) {
+  if (size_ == 0) {
     Enqueue(x);
     return;
   }  // 否则比较时间戳，插入合适的位置
@@ -229,10 +238,10 @@ auto LRUKReplacer::DoubleList::Size() -> size_t {
 
 void LRUKReplacer::DoubleList::PrintList() const {
   Node *p = head_->next_;
-  while (p != nullptr && p->next_ != tail_) {
+  while (p != nullptr && p != tail_) {
     std::cout << p->frame_id_ << " ";
     p = p->next_;
   }
-  std::cout << std::endl;
+  std::cout << "队列元素数量:" << size_ << std::endl;
 }
 }  // namespace bustub

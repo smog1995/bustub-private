@@ -121,7 +121,7 @@ template <typename K, typename V>
 void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
   // std::cout << "insert" << key << std::endl;
   size_t dir_index = IndexOf(key);
-  if (dir_[dir_index]->Insert(key, value) == false) {
+  if (!dir_[dir_index]->Insert(key, value)) {
     bool flag = false;
     if (dir_[dir_index]->GetDepth() == global_depth_) {
       flag = true;
@@ -137,7 +137,7 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
     dir_[dir_index]->IncrementDepth();
     size_t new_bucket_index;
     std::list<std::pair<K, V>> templist(dir_[dir_index]->GetItems());
-    if (flag == true) {
+    if (flag) {
       new_bucket_index = dir_index + (1 << (dir_[dir_index]->GetDepth() - 1));
       dir_[new_bucket_index].reset(new Bucket(bucket_size_, dir_[dir_index]->GetDepth()));
       // std::cout << "dir_index" << dir_index << "  " << new_bucket_index << std::endl;
@@ -244,7 +244,7 @@ auto ExtendibleHashTable<K, V>::Bucket::Insert(const K &key, const V &value) -> 
       break;
     }
   }
-  if (result == false && IsFull() == false) {
+  if (!result && !IsFull()) {
     std::pair<K, V> ele(key, value);
     list_.push_back(ele);
     return true;

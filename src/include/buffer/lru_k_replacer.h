@@ -14,11 +14,9 @@
 
 #include <limits>
 #include <list>
-#include <mutex>  // NOLINT
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
-
 #include "common/config.h"
 #include "common/macros.h"
 
@@ -171,7 +169,6 @@ class LRUKReplacer {
   [[maybe_unused]] size_t k_;
   DoubleList inflist_;
   DoubleList klist_;
-  std::mutex timestamp_lock_;
   std::mutex latch_;
   std::unordered_map<frame_id_t, Node *> map_;
 };
