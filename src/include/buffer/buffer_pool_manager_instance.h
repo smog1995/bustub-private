@@ -68,13 +68,6 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    * @param[out] page_id id of created page
    * @return nullptr if no new pages could be created, otherwise pointer to new page
    */
-  /**
-   * 该功能是将页放如页框中
-   * 1.如果空闲表没有位置，替换策略中发现所有页框都上了锁，表示失败直接返回空指针
-   * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id。
-   * 3.旧页刷脏，setevictalbe为false将该页pin住，同时将新页的数据重置（这里没有放新数据我不太理解），
-   *   哈希表映射页->页框
-   */
   auto NewPgImp(page_id_t *page_id) -> Page * override;
 
   /**
@@ -87,11 +80,6 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    * the replacer (always find from the free list first), read the page from disk by calling disk_manager_->ReadPage(),
    * and replace the old page in the frame. Similar to NewPgImp(), if the old page is dirty, you need to write it back
    * to disk and update the metadata of the new page
-   * 1.从缓冲区中查询是否有该页(哈希表查找)有直接放回；
-   *   如果没有，则需要从从磁盘调页，用readpage函数来获取
-   * 2.如果缓冲区中的页框都被使用和锁上，此时返回空指针表示失败
-   * 3.放页策略依旧时首先找是否存在空页框，如果没有再用replacer
-   * 4.刷脏，pin住该页，哈希表映射页->页框
    * In addition, remember to disable eviction and record the access history of the frame like you did for NewPgImp().
    *
    * @param page_id id of page to be fetched
@@ -104,7 +92,6 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    *
    * @brief Unpin the target page from the buffer pool. If page_id is not in the buffer pool or its pin count is already
    * 0, return false.
-   * 减少目标页的pin计数器，当计数器到达0时，该页需要在替换策略中设置为可驱逐状态。同时，如果该页被修改过需要设置脏标志，取决于is_dirty
    * Decrement the pin count of a page. If the pin count reaches 0, the frame should be evictable by the replacer.
    * Also, set the dirty flag on the page to indicate if the page was modified.
    *
@@ -118,7 +105,6 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    * TODO(P1): Add implementation
    *
    * @brief Flush the target page to disk.
-   *  刷脏，将页面写回磁盘，将dirty标志位重置
    * Use the DiskManager::WritePage() method to flush a page to disk, REGARDLESS of the dirty flag.
    * Unset the dirty flag of the page after flushing.
    *
@@ -129,15 +115,12 @@ class BufferPoolManagerInstance : public BufferPoolManager {
 
   /**
    * TODO(P1): Add implementation
-   * 将所有页面刷脏，写回磁盘
    * @brief Flush all the pages in the buffer pool to disk.
    */
   void FlushAllPgsImp() override;
 
   /**
    * TODO(P1): Add implementation
-   * 删除指定页面，如果缓冲池中没有该页则直接返回true；如果被pin住则返回false。删除页面后在替换策略中停止追踪该页，同事将空下来的页框放到
-   * 空闲列表中，释放页面内存和元数据，最后在磁盘上释放该页，需要调用DeallocatePage() ，但目前没有实现，所以仅是做做样子
    * @brief Delete a page from the buffer pool. If page_id is not in the buffer pool, do nothing and return true. If the
    * page is pinned and cannot be deleted, return false immediately.
    *
@@ -172,13 +155,12 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   /** This latch protects shared data structures. We recommend updating this comment to describe what it protects. */
   std::mutex latch_;
   /**
-   * 在磁盘上获取页，需要用到锁
    * @brief Allocate a page on disk. Caller should acquire the latch before calling this function.
    * @return the id of the allocated page
    */
   auto AllocatePage() -> page_id_t;
 
-  /**不用管
+  /**
    * @brief Deallocate a page on disk. Caller should acquire the latch before calling this function.
    * @param page_id id of the page to deallocate
    */

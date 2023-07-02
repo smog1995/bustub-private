@@ -47,7 +47,6 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
  * 1.如果空闲表没有位置，替换策略中发现所有页框都上了锁，表示失败直接返回空指针
  * 2.空闲表是否有位置，没有才用替换策略替换旧页；调用分配页功能来获取新页id,；
  * 3.使用替换策略时需要看脏位来考虑旧页写回磁盘，set_evictalbe为false将该页pin住，哈希表映射页->页框
- *   
  */
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   std::lock_guard<std::mutex> lock(latch_);
@@ -124,7 +123,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
 }
 
 /**
- *
+ * 如果pin_count大于0，pin_count_--，若-1后等于0，需要将其设置为可驱逐状态。
  */
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
   std::lock_guard<std::mutex> lock(latch_);
