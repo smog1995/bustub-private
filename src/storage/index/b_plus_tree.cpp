@@ -4,6 +4,7 @@
 #include "common/logger.h"
 #include "common/rid.h"
 #include "storage/index/b_plus_tree.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/header_page.h"
 
 namespace bustub {
@@ -47,6 +48,13 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
+  if (IsEmpty()) {
+    auto new_root = reinterpret_cast<LeafPage*>(buffer_pool_manager_->NewPage(&root_page_id_));
+    new_root->Init(root_page_id_, -1, leaf_max_size_);
+    new_root->SetPageType(IndexPageType::LEAF_PAGE);
+    new_
+
+  }
   return false;
 }
 

@@ -24,6 +24,12 @@ auto HeaderPage::InsertRecord(const std::string &name, const page_id_t root_id) 
   assert(root_id > INVALID_PAGE_ID);
 
   int record_num = GetRecordCount();
+  /*
+  Format (size in byte):所以这里offset为4+ record_num*(32+4)
+  *  -----------------------------------------------------------------
+  * | RecordCount (4) | Entry_1 name (32) | Entry_1 root_id (4) | ... |
+  *  -----------------------------------------------------------------
+  */
   int offset = 4 + record_num * 36;
   // check for duplicate name
   if (FindRecord(name) != -1) {
@@ -31,7 +37,8 @@ auto HeaderPage::InsertRecord(const std::string &name, const page_id_t root_id) 
   }
   // copy record content
   memcpy(GetData() + offset, name.c_str(), (name.length() + 1));
-  memcpy((GetData() + offset + 32), &root_id, 4);
+  // 需要复制的对象的地址，即使该对象是int基本类型，也需要用地址，&
+  memcpy((GetData() + offset + 32), &root_id, 4); 
 
   SetRecordCount(record_num + 1);
   return true;

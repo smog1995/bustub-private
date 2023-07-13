@@ -140,21 +140,11 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
     if (flag) {
       new_bucket_index = dir_index + (1 << (dir_[dir_index]->GetDepth() - 1));
       dir_[new_bucket_index].reset(new Bucket(bucket_size_, dir_[dir_index]->GetDepth()));
-      // std::cout << "dir_index" << dir_index << "  " << new_bucket_index << std::endl;
     } else {
       int new_bucket_highest_bit = 1 << (dir_[dir_index]->GetDepth() - 1);
       dir_index = dir_index & (new_bucket_highest_bit - 1);
       new_bucket_index = dir_index + new_bucket_highest_bit;
       dir_[new_bucket_index].reset(new Bucket(bucket_size_, dir_[dir_index]->GetDepth()));
-      // std::cout << "dir_index" << dir_index << "  " << new_bucket_index << std::endl;
-      // size_t count = Pow(2, global_depth_ - dir_[dir_index]->GetDepth());  // 循环次数，也就是2^(ig-i+1)/2=2^(ig-i)
-      // i为深度+1后的值 for (size_t index = 1, high_bit = 1 << (dir_[dir_index]->GetDepth() ); index < count; index++)
-      // {
-      //   // std::cout << "highbit:" << high_bit << std::endl;
-      //   dir_[dir_index + high_bit] = dir_[dir_index];
-      //   dir_[new_bucket_index + high_bit] = dir_[new_bucket_index];
-      //   high_bit <<= 1;
-      // }
       size_t count = Pow(2, global_depth_);
       size_t mask = (new_bucket_highest_bit << 1) - 1;
 
