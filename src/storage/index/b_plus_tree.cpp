@@ -51,9 +51,10 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindLeafPage(InternalPage* root,const KeyType &key) const -> LeafPage*{
   LeafPage* result;
   for (int index = 1;index < root->GetSize(); index++) {
-    if(comparator_(key, root->KeyAt(index)) >= 0 && comparator_(key,root->KeyAt(index + 1)) < 0) {
+    if ((comparator_(key, root->KeyAt(index)) < 0 && index == 1) || 
+    (comparator_(key, root->KeyAt(index)) >= 0 && comparator_(key,root->KeyAt(index + 1)) < 0)) {
       if(!root->ValueAt(index)->IsLeafPage()) {
-        result = FindLeafPage(root->Value, key);
+        result = FindLeafPage(root->ValueAt(index), key);
       }else {
         result = root->ValueAt(index);
       }
@@ -71,7 +72,11 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     new_root->InsertInLeaf(key, value,comparator_);
   } else {
     auto internal_root_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(root_page_id_));
-    internal_root_page
+    auto target_leaf_page = FindLeafPage(internal_root_page, key);
+    if(target_leaf_page->GetSize() + 1 == target_leaf_page->GetMaxSize()) {
+      
+    }
+
   }
   return false;
 }
