@@ -34,7 +34,7 @@ void BPlusTreePage::IncreaseSize(int amount) { size_ += amount; }
 /*
  * Helper methods to get/set max size (capacity) of the page
  */
-auto BPlusTreePage::GetMaxSize() const -> int { return 0; }
+auto BPlusTreePage::GetMaxSize() const -> int { return max_size_; }
 void BPlusTreePage::SetMaxSize(int size) { max_size_ = size; }
 
 /*

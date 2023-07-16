@@ -6,6 +6,7 @@
 #include "storage/index/b_plus_tree.h"
 #include "storage/page/b_plus_tree_page.h"
 #include "storage/page/header_page.h"
+#include "type/value.h"
 
 namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
@@ -47,13 +48,30 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  * keys return false, otherwise return true.
  */
 INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindLeafPage(InternalPage* root,const KeyType &key) const -> LeafPage*{
+  LeafPage* result;
+  for (int index = 1;index < root->GetSize(); index++) {
+    if(comparator_(key, root->KeyAt(index)) >= 0 && comparator_(key,root->KeyAt(index + 1)) < 0) {
+      if(!root->ValueAt(index)->IsLeafPage()) {
+        result = FindLeafPage(root->Value, key);
+      }else {
+        result = root->ValueAt(index);
+      }
+      break;
+    }
+  }
+  return result;
+}
+INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
   if (IsEmpty()) {
     auto new_root = reinterpret_cast<LeafPage*>(buffer_pool_manager_->NewPage(&root_page_id_));
     new_root->Init(root_page_id_, -1, leaf_max_size_);
     new_root->SetPageType(IndexPageType::LEAF_PAGE);
-    new_
-
+    new_root->InsertInLeaf(key, value,comparator_);
+  } else {
+    auto internal_root_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(root_page_id_));
+    internal_root_page
   }
   return false;
 }

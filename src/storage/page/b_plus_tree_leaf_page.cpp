@@ -9,6 +9,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <map>
 #include <sstream>
 
 #include "common/exception.h"
@@ -31,6 +32,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   SetPageId(page_id);
   SetParentPageId(parent_id);
   SetMaxSize(max_size);
+  
 }
 
 /**
@@ -52,14 +54,39 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   return array_[index].first;
 }
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(KeyType &key, ValueType &value) {
-  GenericComparator comp;
-  for (size_t index = 0; index < size_; index++) {
-    if (key <= array_[index].first) {
-      
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value,KeyComparator &comparator) const -> bool{  
+  int index;
+  for (index = 0; index < GetSize(); index++) {
+    if(comparator(key, array_[index].first) < 0) {
+      for (int move = index; move < GetSize(); move++) {
+        array_[move + 1] = array_[move];
+      }
+      array_[index].first = key;
+      array_[index].second = value;
+      break;
+    }
+    if (comparator(key, array_[index].first) == 0) {
+      // 含有相同key的元素
+      return false;
     }
   }
+  return true;
+  
+  // int low = 0, high = GetSize();
+  // int mid = (low + high) / 2;
+  // while(low < high) {
+  //   if (keycompare._M_key_compare(key, array_[mid].first) > 0) {
+  //     low = mid;
+  //   } else if (keycompare._M_key_compare(key, array_[mid].first) < 0) {
+  //     high = mid;
+  //   } else {
+  //     return false;
+  //   }
+  //   mid = (low + high) / 2;
+  // }
+    
 }
+
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTreeLeafPage<GenericKey<8>, RID, GenericComparator<8>>;
 template class BPlusTreeLeafPage<GenericKey<16>, RID, GenericComparator<16>>;
