@@ -9,6 +9,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <cstring>
 #include <iostream>
 #include <sstream>
 
@@ -27,8 +28,9 @@ namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
   SetPageId(page_id);
-  SetPageId(parent_id);
+  SetParentPageId(parent_id);
   SetMaxSize(max_size);
+  SetPageType(IndexPageType::INTERNAL_PAGE);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -42,7 +44,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { array_[index + 1].first = key; }
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
+
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &value) { 
+  array_[index].second = value;
+  IncreaseSize(1);  
+}
 
 /*
  * Helper method to get the value associated with input "index"(a.k.a array
@@ -51,6 +60,36 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { a
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertArray(const MappingType* array, int low, int high) {
+  memset(array_, 0, sizeof(MappingType) * GetMaxSize());
+  for(int index = low; index <= high ; index++) {
+    array_[index - low] = array[index];
+  }
+  SetSize(high - low + 1);
+}
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToArray(MappingType* array) {
+  for (int index = 0; index < GetSize(); index++) {
+    array[index] = array_[index];
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const ValueType &value, KeyComparator& comparator) {
+    int index;
+    for (index = 0; index < GetSize(); index++) {
+    if(comparator(key, array_[index].first) < 0) {
+      for (int move = GetSize() - 1; move >= index; move++) {
+        array_[move + 1] = array_[move];
+      }
+      array_[index].first = key;
+      array_[index].second = value;
+      IncreaseSize(1);
+      break;
+    }
+  }
+}
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t, GenericComparator<8>>;

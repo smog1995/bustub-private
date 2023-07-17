@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "common/config.h"
 #include "concurrency/transaction.h"
 #include "storage/index/index_iterator.h"
 #include "storage/page/b_plus_tree_internal_page.h"
@@ -44,8 +45,8 @@ class BPlusTree {
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
-  auto FindLeafPage(InternalPage* root,const KeyType &key) const -> LeafPage*;
-  auto InsertInParent(InternalPage* parent, const KeyType& key, const ValueType& value) -> bool;
+  auto FindLeafPage(page_id_t root,const KeyType &key) const -> LeafPage*;
+  auto InsertInParent(page_id_t parent, const KeyType& key, const ValueType& value) -> bool;
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
 

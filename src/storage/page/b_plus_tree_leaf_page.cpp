@@ -9,6 +9,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <cstring>
 #include <map>
 #include <sstream>
 
@@ -32,7 +33,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   SetPageId(page_id);
   SetParentPageId(parent_id);
   SetMaxSize(max_size);
-  
+  SetPageType(IndexPageType::LEAF_PAGE);
 }
 
 /**
@@ -56,14 +57,20 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value,KeyComparator &comparator) -> bool{  
   int index;
+  if(GetSize() == 0) {
+    array_[0].first = key;
+    array_[0].second =value;
+    IncreaseSize(1);
+    return true;
+  }
   for (index = 0; index < GetSize(); index++) {
     if(comparator(key, array_[index].first) < 0) {
-      for (int move = index; move < GetSize(); move++) {
-        array_[move + 1].first = array_[move].first;
-        array_[move + 1].second = array_[move].second;
+      for (int move = GetSize() - 1; move >= index; move++) {
+        array_[move + 1] = array_[move];
       }
       array_[index].first = key;
       array_[index].second = value;
+      IncreaseSize(1);
       break;
     }
     if (comparator(key, array_[index].first) == 0) {
@@ -72,20 +79,21 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
     }
   }
   return true;
-  
-  // int low = 0, high = GetSize();
-  // int mid = (low + high) / 2;
-  // while(low < high) {
-  //   if (keycompare._M_key_compare(key, array_[mid].first) > 0) {
-  //     low = mid;
-  //   } else if (keycompare._M_key_compare(key, array_[mid].first) < 0) {
-  //     high = mid;
-  //   } else {
-  //     return false;
-  //   }
-  //   mid = (low + high) / 2;
-  // }
     
+}
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType* array) {
+  for (int index = 0; index < GetSize(); index++) {
+    array[index] = array_[index];
+  }
+}
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertArray(MappingType* array, int low, int high) {
+  memset(array_,0,sizeof(MappingType) * GetMaxSize());
+  for(int index = low; index <= high ; index++) {
+    array_[index - low] = array[index];
+  }
+  SetSize(high - low + 1);
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
