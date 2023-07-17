@@ -59,9 +59,9 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
   for (index = 0; index < GetSize(); index++) {
     if(comparator(key, array_[index].first) < 0) {
       for (int move = index; move < GetSize(); move++) {
-        array_[move + 1] = array_[move];
+        array_[move + 1].first = array_[move].first;
       }
-      array_[index].first = key;
+      array_[index].first.SetFromInteger(key);
       array_[index].second = value;
       break;
     }
