@@ -1,5 +1,6 @@
 #include <string>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
@@ -49,18 +50,26 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindLeafPage(InternalPage* root,const KeyType &key) const -> LeafPage*{
-  LeafPage* result;
+  LeafPage* result = nullptr;
   for (int index = 1;index < root->GetSize(); index++) {
-    if(comparator_(key, root->KeyAt(index)) >= 0 && comparator_(key,root->KeyAt(index + 1)) < 0) {
-      if(!root->ValueAt(index)->IsLeafPage()) {
-        result = FindLeafPage(root->Value, key);
+    if((comparator_(key, root->KeyAt(index)) < 0 && index == 1) 
+    || (comparator_(key, root->KeyAt(index)) > 0 && index == root->GetSize() - 1)
+    || (comparator_(key, root->KeyAt(index)) >= 0 && comparator_(key,root->KeyAt(index + 1)) < 0)) {
+      auto child_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(root->ValueAt(index)));
+      if(child_page->IsLeafPage()) {
+        result = reinterpret_cast<LeafPage*>(child_page);
       }else {
-        result = root->ValueAt(index);
+        result = FindLeafPage(reinterpret_cast<InternalPage*>(child_page), key);
       }
       break;
     }
   }
   return result;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::InsertInParent(InternalPage* parent, const KeyType& key, const ValueType& value) -> bool {
+
 }
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
@@ -69,11 +78,26 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     new_root->Init(root_page_id_, -1, leaf_max_size_);
     new_root->SetPageType(IndexPageType::LEAF_PAGE);
     new_root->InsertInLeaf(key, value,comparator_);
-  } else {
-    auto internal_root_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(root_page_id_));
-    internal_root_page
+    new_root->SetPageId(root_page_id_);
+    new_root->SetParentPageId(-1);//本身是root节点
+    return true;
   }
-  return false;
+  auto root_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(root_page_id_));
+  if (root_page->IsRootPage()) {
+    auto root_leaf_page = reinterpret_cast<LeafPage*>(root_page);
+    if (root_leaf_page->GetSize() + 1 == root_leaf_page->GetMaxSize()) {
+      auto parent_internal_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(root_leaf_page->GetParentPageId()));
+      InsertInParent(parent_internal_page, key, value);
+    } else{
+      root_leaf_page->InsertInLeaf(key, value, comparator_);
+    }
+
+  } else {
+    auto root_internal_page = reinterpret_cast<InternalPage*>(root_page);
+  }
+  auto target_leaf_page = FindLeafPage(root_internal_page, key);
+
+
 }
 
 /*****************************************************************************
