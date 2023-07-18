@@ -46,7 +46,7 @@ class BPlusTree {
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
   auto FindLeafPage(page_id_t root,const KeyType &key) const -> LeafPage*;
-  auto InsertInParent(page_id_t parent, const KeyType& key, const ValueType& value) -> bool;
+  auto InsertInParent(page_id_t left, const KeyType& key, page_id_t right) -> bool;
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
 
