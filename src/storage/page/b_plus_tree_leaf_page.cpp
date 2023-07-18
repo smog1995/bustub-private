@@ -79,7 +79,6 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
     }
   }
   return true;
-    
 }
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType* array) {
@@ -94,6 +93,22 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertArray(MappingType* array, int low, int hi
     array_[index - low] = array[index];
   }
   SetSize(high - low + 1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType& key,KeyComparator& comparator) {
+  int index;
+  for (index = 0; index < GetSize(); index++) {
+    if(comparator(array_[index].first, key)) {
+        for (int move = index; move < GetSize() - 1; move++) {
+          array_[move] = array_[move + 1];
+        }
+    }
+    DecrementSize();
+  }
+  // don't worry about there is only one pair in page cause the page will be delete.
+  
+
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

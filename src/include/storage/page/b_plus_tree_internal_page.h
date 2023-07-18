@@ -45,6 +45,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void InsertInInternal(const KeyType& key, const ValueType& value, KeyComparator& comparator);
   void InsertArray(const MappingType* array, int low, int high);
   void CopyToArray(MappingType* array);
+  void GetSiblingPageId(const ValueType *values);
  private:
   // Flexible array member for page data.
   MappingType array_[1];

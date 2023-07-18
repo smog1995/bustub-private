@@ -90,6 +90,15 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
     }
   }
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSiblingPageId(ValueType *result,const ValueType &value) {
+  for(int index = 1; index < GetSize(); index++) {
+    if (array_[index].second == value) {
+      if(index - 1 >= 0 )
+    }
+  }
+}
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t, GenericComparator<8>>;
