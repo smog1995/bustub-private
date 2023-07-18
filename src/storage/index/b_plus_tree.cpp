@@ -136,6 +136,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     int maxsize = target_leaf_page->GetMaxSize();
     KeyType min_key_in_newleaf = array[maxsize / 2 ].first;
     target_leaf_page->InsertArray(array,0,maxsize / 2 - 1);
+    target_leaf_page->SetNextPageId(another_leaf_pageid);
     another_leaf_page->InsertArray(array,maxsize / 2, maxsize - 1);
     InsertInParent(target_leaf_page->GetPageId(), min_key_in_newleaf, another_leaf_pageid);
     buffer_pool_manager_->UnpinPage(another_leaf_pageid, true);
