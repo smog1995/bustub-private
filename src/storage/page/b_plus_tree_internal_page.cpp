@@ -78,7 +78,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToArray(MappingType* array) {
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const ValueType &value, KeyComparator& comparator) {
     int index;
-    for (index = 0; index < GetSize(); index++) {
+    for (index = 1; index < GetSize(); index++) {
     if(comparator(key, array_[index].first) < 0) {
       for (int move = GetSize() - 1; move >= index; move++) {
         array_[move + 1] = array_[move];
@@ -92,15 +92,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(ValueType *result, KeyType& key, KeyComparator& comparator) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(ValueType *result, const KeyType& key, KeyComparator& comparator) {
   for(int index = 1; index < GetSize(); index++) {
     if (comparator(key, array_[index].first)) {
       if(index - 1 >= 0 ) {
         result[0] = array_[index - 1].second;
       }
-      if(index + 1 <= GetMaxSize() - 1) {
         result[1] = array_[index + 1].second;
-      }
     }
   }
 }

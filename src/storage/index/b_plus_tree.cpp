@@ -18,7 +18,9 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
-      internal_max_size_(internal_max_size) {}
+      internal_max_size_(internal_max_size) {
+      
+}
 
 /*
  * Helper function to decide whether current b+tree is empty
@@ -91,21 +93,20 @@ auto BPLUSTREE_TYPE::InsertInParent(page_id_t left, const KeyType& key, page_id_
     new_internal_page->SetKeyAt(1,key);
     new_internal_page->SetValueAt(0,left);
     new_internal_page->SetValueAt(1,right);
-    UpdateRootPageId(1);
+    UpdateRootPageId();
     buffer_pool_manager_->UnpinPage(new_internal_pageid, true);
   } else { //第二种是父节点是内部节点，直接插入；同时若节点已满需要分裂内部节点同时插入父节点的父节点
     auto left_internal_page = reinterpret_cast<InternalPage*>(left_page);
     left_internal_page->InsertInInternal(key,right,comparator_);
-    if(left_internal_page->GetSize()  == left_internal_page->GetMaxSize()) {
-      std::pair<KeyType, page_id_t> array[left_internal_page->GetMaxSize()];
+    if(left_internal_page->GetSize()  == internal_max_size_) {
+      std::pair<KeyType, page_id_t> array[internal_max_size_];
       left_internal_page->CopyToArray(array);
       new_internal_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->NewPage(&new_internal_pageid));
       new_internal_page->Init(new_internal_pageid, left_page->GetParentPageId());
       new_internal_page->SetPageType(IndexPageType::INTERNAL_PAGE);
-      int maxsize = left_internal_page->GetMaxSize();
-      KeyType min_internal_key = left_internal_page->KeyAt(maxsize / 2);
-      left_internal_page->InsertArray(array, 0, maxsize / 2 - 1);
-      new_internal_page->InsertArray(array, maxsize / 2 + 1, maxsize - 1);
+      KeyType min_internal_key = left_internal_page->KeyAt(internal_max_size_ / 2);
+      left_internal_page->InsertArray(array, 0, internal_max_size_ / 2 - 1);
+      new_internal_page->InsertArray(array, internal_max_size_ / 2, internal_max_size_ - 1); // 把中间的key复制了也没关系，0号位的key是不会进行搜索的
       InsertInParent(left, min_internal_key, new_internal_pageid);
       buffer_pool_manager_->UnpinPage(new_internal_pageid, true);
     }
@@ -116,8 +117,8 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
   if (IsEmpty()) {
     auto new_root = reinterpret_cast<LeafPage*>(buffer_pool_manager_->NewPage(&root_page_id_));
-    UpdateRootPageId();
-    new_root->Init(root_page_id_, -1);
+    UpdateRootPageId(1);
+    new_root->Init(root_page_id_, -1, leaf_max_size_);
     new_root->SetPageType(IndexPageType::LEAF_PAGE);
     new_root->InsertInLeaf(key, value, comparator_);
     std::cout << "root is empty" << std::endl;
@@ -125,19 +126,19 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     return true;
   }
   auto target_leaf_page = FindLeafPage(root_page_id_, key);
-  if(!target_leaf_page->InsertInLeaf(key, value, comparator_)) {
-    return false;
+  if (!target_leaf_page->InsertInLeaf(key, value, comparator_)) {
+    return false; // 已有重复键
   }
-  if(target_leaf_page->GetSize() == target_leaf_page->GetMaxSize()) {
+  // 如果插入后叶子满了，需要进行分裂 （n-1才是稳定态）
+  if(target_leaf_page->GetSize() == leaf_max_size_) {
     page_id_t another_leaf_pageid;
     auto another_leaf_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->NewPage(&another_leaf_pageid));
-    MappingType array[target_leaf_page->GetMaxSize()];
+    MappingType array[leaf_max_size_];
     target_leaf_page->CopyToArray(array);
-    int maxsize = target_leaf_page->GetMaxSize();
-    KeyType min_key_in_newleaf = array[maxsize / 2 ].first;
-    target_leaf_page->InsertArray(array,0,maxsize / 2 - 1);
+    KeyType min_key_in_newleaf = array[leaf_max_size_ / 2].first;
+    target_leaf_page->InsertArray(array,0,leaf_max_size_ / 2 - 1);
     target_leaf_page->SetNextPageId(another_leaf_pageid);
-    another_leaf_page->InsertArray(array,maxsize / 2, maxsize - 1);
+    another_leaf_page->InsertArray(array,leaf_max_size_ / 2, leaf_max_size_ - 1);
     InsertInParent(target_leaf_page->GetPageId(), min_key_in_newleaf, another_leaf_pageid);
     buffer_pool_manager_->UnpinPage(another_leaf_pageid, true);
   }
@@ -154,6 +155,9 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * delete entry from leaf page. Remember to deal with redistribute or merge if
  * necessary.
  */
+/**第一种情况，兄弟节点>minsize，借走即可；左向右借时，直接用getNextPageid来拿兄弟的key，拿到后在兄弟那边直接修改它自己父节点中的key
+ *
+*/
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if(IsEmpty()) {
@@ -161,8 +165,10 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   }
   auto target_leaf_page = FindLeafPage(root_page_id_, key);
   target_leaf_page->DeleteKey(key, comparator_);
+  auto parent_internal_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(target_leaf_page->GetParentPageId()));
+  page_id_t sibling[2] = {-1};
+  parent_internal_page->GetSibling(sibling, key, comparator_);
   if(target_leaf_page->GetSize() < target_leaf_page->GetMinSize()) {
-    auto parent_internal_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(target_leaf_page->GetParentPageId()));
     
   }
 
