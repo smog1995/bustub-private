@@ -163,7 +163,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   target_leaf_page->DeleteKey(key, comparator_);
   if(target_leaf_page->GetSize() < target_leaf_page->GetMinSize()) {
     auto parent_internal_page = reinterpret_cast<InternalPage*>(buffer_pool_manager_->FetchPage(target_leaf_page->GetParentPageId()));
-    parent_internal_page->
+    
   }
 
 }

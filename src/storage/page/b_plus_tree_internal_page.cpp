@@ -92,10 +92,15 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSiblingPageId(ValueType *result,const ValueType &value) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(ValueType *result, KeyType& key, KeyComparator& comparator) {
   for(int index = 1; index < GetSize(); index++) {
-    if (array_[index].second == value) {
-      if(index - 1 >= 0 )
+    if (comparator(key, array_[index].first)) {
+      if(index - 1 >= 0 ) {
+        result[0] = array_[index - 1].second;
+      }
+      if(index + 1 <= GetMaxSize() - 1) {
+        result[1] = array_[index + 1].second;
+      }
     }
   }
 }
