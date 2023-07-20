@@ -193,9 +193,10 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
     auto checked_sibling_page =
         reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(sibling[checked_sibling_index].second));
     auto current_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(current_pageid));
-    // 减1是因为删除key操作还没执行
-    if (checked_sibling_page->GetSize() + current_page->GetSize() - 1 < checked_sibling_page->GetMaxSize()) {
-      if (checked_sibling_index == 1) {  // 该兄弟是节点(N)的右兄弟(N') （N在N'前）,两指针交换
+    // 如果两个节点加起来的pair数量小于maxsize（减1是因为删除key操作还没执行）
+    if (checked_sibling_page->GetSize() + current_page->GetSize() - 1 < checked_sibling_page->GetMaxSize()) { 
+      if (checked_sibling_index == 1) {  // 节点(N)的兄弟(N')为右兄弟 （也就是N在N'前）,两指针交换
+      // 这样做的目的是保持每次都只删除右指针,父节点删除键值对
         auto temp = checked_sibling_page;
         checked_sibling_page = current_page;
         current_page = temp;
@@ -216,6 +217,13 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
         current_leaf_page->CopyToArray(array);
         sibling_leaf_page->MergeInLeaf(array, current_leaf_page->GetSize());
         sibling_leaf_page->SetNextPageId(current_leaf_page->GetNextPageId());
+      }
+      DeleteEntry(current_page->GetParentPageId(), sibling[checked_sibling_index].first, current_pageid);
+    } else { // 从兄弟借一个pair
+      if (checked_sibling_index == 0) { //N‘为N的前一个节点
+        if (!current_page->IsLeafPage()) {
+          page_id_t last
+        }
       }
     }
   }
