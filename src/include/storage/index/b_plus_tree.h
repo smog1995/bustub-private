@@ -45,11 +45,12 @@ class BPlusTree {
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
-  auto FindLeafPage(page_id_t root,const KeyType &key) const -> LeafPage*;
-  auto InsertInParent(page_id_t left, const KeyType& key, page_id_t right) -> bool;
+  auto FindLeafPage(page_id_t root, const KeyType &key) const -> LeafPage *;
+  auto InsertInParent(page_id_t left, const KeyType &key, page_id_t right) -> bool;
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
-
+  // 当参数value不填时为叶节点删除操作
+  void DeleteEntry(page_id_t node, const KeyType &key, page_id_t value = INVALID_PAGE_ID);
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
@@ -91,6 +92,8 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
+  int leaf_min_size_;
+  int internal_min_size_;
 };
 
 }  // namespace bustub

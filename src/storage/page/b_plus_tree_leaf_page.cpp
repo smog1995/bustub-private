@@ -55,16 +55,17 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   return array_[index].first;
 }
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value,KeyComparator &comparator) -> bool{  
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value, KeyComparator &comparator)
+    -> bool {
   int index;
-  if(GetSize() == 0) {
+  if (GetSize() == 0) {
     array_[0].first = key;
-    array_[0].second =value;
+    array_[0].second = value;
     IncreaseSize(1);
     return true;
   }
   for (index = 0; index < GetSize(); index++) {
-    if(comparator(key, array_[index].first) < 0) {
+    if (comparator(key, array_[index].first) < 0) {
       for (int move = GetSize() - 1; move >= index; move++) {
         array_[move + 1] = array_[move];
       }
@@ -81,34 +82,40 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
   return true;
 }
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType* array) {
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType *array) {
   for (int index = 0; index < GetSize(); index++) {
     array[index] = array_[index];
   }
 }
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertArray(MappingType* array, int low, int high) {
-  memset(array_,0,sizeof(MappingType) * GetMaxSize());
-  for(int index = low; index <= high ; index++) {
+void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertArray(MappingType *array, int low, int high) {
+  memset(array_, 0, sizeof(MappingType) * GetMaxSize());
+  for (int index = low; index <= high; index++) {
     array_[index - low] = array[index];
   }
   SetSize(high - low + 1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType& key,KeyComparator& comparator) {
+void B_PLUS_TREE_LEAF_PAGE_TYPE::Delete(const KeyType &key, KeyComparator &comparator) {
   int index;
   for (index = 0; index < GetSize(); index++) {
-    if(comparator(array_[index].first, key)) {
-        for (int move = index; move < GetSize() - 1; move++) {
-          array_[move] = array_[move + 1];
-        }
+    if (comparator(array_[index].first, key) == 0) {
+      for (int move = index; move < GetSize() - 1; move++) {
+        array_[move] = array_[move + 1];
+      }
     }
     DecrementSize();
   }
   // don't worry about there is only one pair in page cause the page will be delete.
-  
+}
 
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MergeInLeaf(MappingType *array, int array_size) {
+  for (int index = GetSize(); index < GetSize() + array_size; index++) {
+    array_[index] = array[index - GetSize()];
+  }
+  IncreaseSize(array_size);
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

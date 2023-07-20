@@ -38,7 +38,7 @@ auto HeaderPage::InsertRecord(const std::string &name, const page_id_t root_id) 
   // copy record content
   memcpy(GetData() + offset, name.c_str(), (name.length() + 1));
   // 需要复制的对象的地址，即使该对象是int基本类型，也需要用地址，&
-  memcpy((GetData() + offset + 32), &root_id, 4); 
+  memcpy((GetData() + offset + 32), &root_id, 4);
 
   SetRecordCount(record_num + 1);
   return true;

@@ -42,10 +42,14 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
   void SetValueAt(int index, const ValueType &value);
-  void InsertInInternal(const KeyType& key, const ValueType& value, KeyComparator& comparator);
-  void InsertArray(const MappingType* array, int low, int high);
-  void CopyToArray(MappingType* array);
-  void GetSibling(ValueType *values, const KeyType& key, KeyComparator& comparator);
+  void InsertInInternal(const KeyType &key, const ValueType &value, KeyComparator &comparator);
+  void InsertArray(const MappingType *array, int low, int high);
+  void CopyToArray(MappingType *array);
+
+  void GetSibling(MappingType *result, const ValueType &current_pageid);
+  void Delete(const KeyType &key, const ValueType &value);
+  void MergeInInternal(const KeyType &parentKey, MappingType *array, int array_size);
+
  private:
   // Flexible array member for page data.
   MappingType array_[1];
