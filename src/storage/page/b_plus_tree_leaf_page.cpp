@@ -45,6 +45,19 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return nex
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Find(const KeyType& key, std::vector<ValueType> *result, KeyComparator& comparator) -> bool {
+  for (int index = 0; index < GetSize(); index++) {
+    if(comparator(key,array_[index].first) == 0) {
+      for (int res_index = index; res_index < GetSize() && comparator(key, array_[res_index].first) == 0; res_index++) {
+        result->emplace_back(array_[res_index].second);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 /*
  * Helper method to find and return the key associated with input "index"(a.k.a
  * array offset)
@@ -53,6 +66,11 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   // replace with your own code
   return array_[index].first;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  return array_[index].second;
 }
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value, KeyComparator &comparator)

@@ -40,7 +40,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   // replace with your own code
-  KeyType key = array_[index + 1].first;
+  KeyType key = array_[index].first;
   return key;
 }
 
@@ -81,7 +81,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
   int index;
   for (index = 1; index < GetSize(); index++) {
     if (comparator(key, array_[index].first) < 0) {
-      for (int move = GetSize() - 1; move >= index; move++) {
+      for (int move = GetSize() - 1; move >= index; move--) {
         array_[move + 1] = array_[move];
       }
       array_[index].first = key;
@@ -97,7 +97,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(MappingType *result, const Value
   for (int index = 0; index < GetSize(); index++) {
     if (current_pageid == array_[index].second) {
       if (index - 1 >= 0) {
-        result[0] = array_[index - 1];
+        result[0].first = array_[index].first;
+        result[0].second = array_[index - 1].second;
       }
       if (index + 1 < GetSize()) {
         result[1] = array_[index + 1];
@@ -107,8 +108,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(MappingType *result, const Value
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Delete(const KeyType &key, const ValueType &value) {
-  for (int index = 1; index < GetSize(); index++) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Delete(const ValueType &value) {
+  for (int index = 0; index < GetSize(); index++) {
     if (value == array_[index].second) {
       for (int move = index; move < GetSize() - 1; move++) {
         array_[move] = array_[move + 1];
@@ -128,6 +129,28 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MergeInInternal(const KeyType &parentKey, M
     array_[index] = array[index - size];
   }
   IncreaseSize(array_size);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInFirst(const ValueType& value, const KeyType& key) {
+  int index = 0;
+  for (int move = GetSize() - 1; move >= index; move--) {
+    array_[move + 1] = array_[move];
+  }
+  array_[index].second = value;
+  array_[index + 1].first = key;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SwapKeyAtValue(KeyType& swap_key, const ValueType& value, bool get_right_key) {
+  for(int index = 0; index < GetSize(); index++) {
+    if(value == array_[index].second) {
+      int target_index = get_right_key ? index + 1 : index;
+        KeyType temp = array_[target_index].first;
+        array_[target_index].first = swap_key;
+        swap_key = temp;
+    }
+  }
 }
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
