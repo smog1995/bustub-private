@@ -47,8 +47,11 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_pa
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::Find(const KeyType& key, std::vector<ValueType> *result, KeyComparator& comparator) -> bool {
+  std::cout << " op Find of LeafPage:";
   for (int index = 0; index < GetSize(); index++) {
-    if(comparator(key,array_[index].first) == 0) {
+    std::cout << " compare key " << key << "vs" << array_[index].first << " res: " << comparator(key, array_[index].first) << std::endl;
+    if(comparator(key, array_[index].first) == 0) {
+      
       for (int res_index = index; res_index < GetSize() && comparator(key, array_[res_index].first) == 0; res_index++) {
         result->emplace_back(array_[res_index].second);
       }
@@ -76,7 +79,9 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value, KeyComparator &comparator)
     -> bool {
   int index;
+  std::cout << "current page:" << GetPageId() << "Size:" << GetSize() << " Insert:" << key ;
   if (GetSize() == 0) {
+    std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
     array_[0].first = key;
     array_[0].second = value;
     IncreaseSize(1);
@@ -84,19 +89,21 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
   }
   for (index = 0; index < GetSize(); index++) {
     if (comparator(key, array_[index].first) < 0) {
-      for (int move = GetSize() - 1; move >= index; move++) {
-        array_[move + 1] = array_[move];
-      }
-      array_[index].first = key;
-      array_[index].second = value;
-      IncreaseSize(1);
       break;
     }
     if (comparator(key, array_[index].first) == 0) {
+      std::cout << " failed, now it has " << GetSize() << " pair" << std::endl;
       // 含有相同key的元素
       return false;
     }
   }
+  for (int move = GetSize() - 1; move >= index; move--) {
+    array_[move + 1] = array_[move];
+  }
+  array_[index].first = key;
+  array_[index].second = value;
+  IncreaseSize(1);
+  std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
   return true;
 }
 INDEX_TEMPLATE_ARGUMENTS
