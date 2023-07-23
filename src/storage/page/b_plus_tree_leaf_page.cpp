@@ -10,6 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <cstring>
+#include <iterator>
 #include <map>
 #include <sstream>
 
@@ -79,7 +80,10 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value, KeyComparator &comparator)
     -> bool {
   int index;
-  std::cout << "current page:" << GetPageId() << "Size:" << GetSize() << " Insert:" << key ;
+  // std::cout << "current page:" << GetPageId() << "Size:" << GetSize() << " Insert:" << key ;
+  if (GetSize() == GetMaxSize()) {
+    return false;
+  }
   if (GetSize() == 0) {
     std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
     array_[0].first = key;
@@ -126,12 +130,21 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Delete(const KeyType &key, KeyComparator &compa
   int index;
   for (index = 0; index < GetSize(); index++) {
     if (comparator(array_[index].first, key) == 0) {
+      // std::cout <<key << "compare"<< array_[index].first<< " " << comparator(array_[index].first, key) <<std::endl;
       for (int move = index; move < GetSize() - 1; move++) {
         array_[move] = array_[move + 1];
       }
+      break;
     }
-    DecrementSize();
   }
+  DecrementSize();
+  //Debug
+  std::cout<<"现在的节点为："<< GetPageId() << " 值有:";
+  for(int idx = 0; idx < GetSize(); idx++) {
+    std::cout<< array_[idx].first<< " ";
+  }
+  std::cout<<std::endl;
+ 
   // don't worry about there is only one pair in page cause the page will be delete.
 }
 

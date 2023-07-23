@@ -46,14 +46,16 @@ class BPlusTree {
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
   auto FindLeafPage(page_id_t root, const KeyType &key) const -> LeafPage *;
-  void InsertArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType& key, page_id_t value);
+  void InsertInternalArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType& key, page_id_t value);
+  void InsertLeafArrayHelper(MappingType *array, int array_size, const KeyType& key, const ValueType& value);
   void SetNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, BPlusTreePage* child,
                                         InternalPage* left_parent, InternalPage* right_parent);
+  void SetArrayNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, InternalPage* parent);                                 
   void InsertInParent(BPlusTreePage* left, const KeyType &key, BPlusTreePage* right);
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
   // 当参数value不填时为叶节点删除操作
-  void DeleteEntry(page_id_t node, const KeyType &key, page_id_t value = INVALID_PAGE_ID);
+  void DeleteEntry(BPlusTreePage* node, const KeyType &key, BPlusTreePage* value);
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
