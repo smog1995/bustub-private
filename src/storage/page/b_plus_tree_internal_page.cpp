@@ -62,7 +62,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { ret
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertArray(const MappingType *array, int low, int high) {
-  memset(array_, 0, sizeof(MappingType) * GetMaxSize());
+  // memset(array_, 0, sizeof(MappingType) * GetMaxSize());
   for (int index = low; index <= high; index++) {
     array_[index - low] = array[index];
   }

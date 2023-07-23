@@ -1,4 +1,5 @@
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -58,14 +59,13 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  * keys return false, otherwise return true.
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindLeafPage(page_id_t root_page, const KeyType &key) const -> LeafPage * {
-  auto page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page));
+auto BPLUSTREE_TYPE::FindLeafPage(page_id_t root_pageid, const KeyType &key) const -> LeafPage * {
+  auto page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(root_pageid));
   if (page->IsLeafPage()) {
-    buffer_pool_manager_->UnpinPage(root_page, false);
-    return reinterpret_cast<LeafPage *>(page);
+    return reinterpret_cast<LeafPage*>(page);
   }
   LeafPage *result = nullptr;
-  auto root = reinterpret_cast<InternalPage *>(page);
+  auto root = reinterpret_cast<InternalPage*>(page);
   for (int index = 1; index < root->GetSize(); index++) {
     std::cout << "在这里找页：" << key << ":" << root->KeyAt(index) << comparator_(key, root->KeyAt(index)) <<std::endl;
     int compare_result = comparator_(key, root->KeyAt(index));
@@ -73,17 +73,17 @@ auto BPLUSTREE_TYPE::FindLeafPage(page_id_t root_page, const KeyType &key) const
       (compare_result >= 0 && comparator_(key, root->KeyAt(index + 1)) < 0)) {
         int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
       page_id_t child_pageid = root->ValueAt(res_index);
-      auto child_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(child_pageid));
+      auto child_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(child_pageid));
       if (child_page->IsLeafPage()) {
         result = reinterpret_cast<LeafPage *>(child_page);
       } else {
         result = FindLeafPage(root->ValueAt(res_index), key);
+        buffer_pool_manager_->UnpinPage(child_pageid, false);
       }
-      buffer_pool_manager_->UnpinPage(child_pageid, false);
       break;
     }
   }
-  buffer_pool_manager_->UnpinPage(root_page, false);
+  buffer_pool_manager_->UnpinPage(root_pageid,  false);
   return result;
 }
 
@@ -219,14 +219,21 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (IsEmpty()) {
     return;
   }
+  std::cout<< "rootid"<< root_page_id_ <<" key:"<<key<<std::endl;
   auto target_leaf_page = FindLeafPage(root_page_id_, key);
   DeleteEntry(target_leaf_page->GetPageId(), key);
+  buffer_pool_manager_->UnpinPage(target_leaf_page->GetPageId(), true);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, page_id_t value) {
   auto current_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(current_pageid));
-  if (current_page->IsRootPage() && current_page->GetSize() - 1 == 1 &&
+  if (current_page->IsLeafPage()) {
+    reinterpret_cast<LeafPage*>(current_page)->Delete(key, comparator_);
+  } else {
+    reinterpret_cast<InternalPage*>(current_page)->Delete(value);
+  }
+  if (current_page->IsRootPage() && current_page->GetSize() == 1 &&
       !current_page->IsLeafPage()) {  // N为根节点且删除后只剩一个孩子节点(前提为非叶节点)
     auto target_internal_page = reinterpret_cast<InternalPage *>(current_page);
     target_internal_page->Delete(value);
@@ -237,6 +244,7 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
     buffer_pool_manager_->DeletePage(current_pageid);
   } else if ((current_page->IsLeafPage() && current_page->GetSize() < leaf_min_size_) ||
              (!current_page->IsLeafPage() && current_page->GetSize() < internal_min_size_)) {
+    // 或者节点中键值对少于minsize
     auto parent_internal_page =
         reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(current_page->GetParentPageId()));
     std::pair<KeyType, page_id_t> sibling[2];
@@ -246,8 +254,8 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
     page_id_t checked_sibling_index = sibling[0].second == -1 ? 1 : 0;
     auto checked_sibling_page =
         reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(sibling[checked_sibling_index].second));
-    // 如果两个节点加起来的pair数量小于maxsize（减1是因为删除key操作还没执行）
-    if (checked_sibling_page->GetSize() + current_page->GetSize() - 1 < checked_sibling_page->GetMaxSize()) { 
+    // 如果两个节点加起来的pair数量小于maxsize
+    if (checked_sibling_page->GetSize() + current_page->GetSize() < checked_sibling_page->GetMaxSize()) { 
       if (checked_sibling_index == 1) {  // 节点(N)的兄弟(N')为右兄弟 （也就是N在N'前）,两指针交换
       // 这样做的目的是保持每次都只删除右指针,父节点删除指向右指针的键值对
         auto temp = checked_sibling_page;
@@ -257,7 +265,6 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
       if (!current_page->IsLeafPage()) {  // 非叶子节点，则把父节点的key和N中的所有指针拿到N'中
         auto sibling_internal_page = reinterpret_cast<InternalPage *>(checked_sibling_page);
         auto current_internal_page = reinterpret_cast<InternalPage *>(current_page);
-        current_internal_page->Delete(value);
         std::pair<KeyType, page_id_t> array[current_internal_page->GetSize()];
         current_internal_page->CopyToArray(array);
         sibling_internal_page->MergeInInternal(sibling[checked_sibling_index].first, array,
@@ -265,7 +272,6 @@ void BPLUSTREE_TYPE::DeleteEntry(page_id_t current_pageid, const KeyType &key, p
       } else {  //叶子节点，则把N中所有K,V拿到N'中,还需注意把nextpageId改下
         auto sibling_leaf_page = reinterpret_cast<LeafPage *>(checked_sibling_page);
         auto current_leaf_page = reinterpret_cast<LeafPage *>(current_page);
-        current_leaf_page->Delete(key, comparator_);
         MappingType array[current_leaf_page->GetSize()];
         current_leaf_page->CopyToArray(array);
         sibling_leaf_page->MergeInLeaf(array, current_leaf_page->GetSize());
@@ -339,7 +345,10 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE()
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { 
+  FindLeafPage(root_page_id_, key);
+  return INDEXITERATOR_TYPE();
+}
 
 /*
  * Input parameter is void, construct an index iterator representing the end

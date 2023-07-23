@@ -114,7 +114,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType *array) {
 }
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertArray(MappingType *array, int low, int high) {
-  memset(array_, 0, sizeof(MappingType) * GetMaxSize());
+  // memset(array_, 0, sizeof(MappingType) * GetMaxSize());
   for (int index = low; index <= high; index++) {
     array_[index - low] = array[index];
   }
