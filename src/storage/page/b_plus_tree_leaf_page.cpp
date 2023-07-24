@@ -14,6 +14,7 @@
 #include <map>
 #include <sstream>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/rid.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
@@ -35,6 +36,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   SetParentPageId(parent_id);
   SetMaxSize(max_size);
   SetPageType(IndexPageType::LEAF_PAGE);
+  next_page_id_ = INVALID_PAGE_ID;
 }
 
 /**
@@ -47,12 +49,13 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::Find(const KeyType& key, std::vector<ValueType> *result, KeyComparator& comparator) -> bool {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Find(const KeyType &key, std::vector<ValueType> *result, KeyComparator &comparator)
+    -> bool {
   std::cout << " op Find of LeafPage:";
   for (int index = 0; index < GetSize(); index++) {
-    std::cout << " compare key " << key << "vs" << array_[index].first << " res: " << comparator(key, array_[index].first) << std::endl;
-    if(comparator(key, array_[index].first) == 0) {
-      
+    std::cout << " compare key " << key << "vs" << array_[index].first
+              << " res: " << comparator(key, array_[index].first) << std::endl;
+    if (comparator(key, array_[index].first) == 0) {
       for (int res_index = index; res_index < GetSize() && comparator(key, array_[res_index].first) == 0; res_index++) {
         result->emplace_back(array_[res_index].second);
       }
@@ -73,22 +76,17 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  return array_[index].second;
-}
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueType &value, KeyComparator &comparator)
     -> bool {
   int index;
   // std::cout << "current page:" << GetPageId() << "Size:" << GetSize() << " Insert:" << key ;
-  if (GetSize() == GetMaxSize()) {
-    return false;
-  }
   if (GetSize() == 0) {
-    std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
     array_[0].first = key;
     array_[0].second = value;
     IncreaseSize(1);
+    std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
     return true;
   }
   for (index = 0; index < GetSize(); index++) {
@@ -110,6 +108,17 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertInLeaf(const KeyType &key, const ValueTyp
   std::cout << " success, now it has " << GetSize() << " pair." << std::endl;
   return true;
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::Find(const KeyType &key, KeyComparator &comparator) -> bool {
+  for (int index = 0; index < GetSize(); index++) {
+    if (comparator(key, array_[index].first) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToArray(MappingType *array) {
   for (int index = 0; index < GetSize(); index++) {
@@ -138,13 +147,13 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Delete(const KeyType &key, KeyComparator &compa
     }
   }
   DecrementSize();
-  //Debug
-  std::cout<<"现在的节点为："<< GetPageId() << " 值有:";
-  for(int idx = 0; idx < GetSize(); idx++) {
-    std::cout<< array_[idx].first<< " ";
+  // Debug
+  std::cout << "现在的节点为：" << GetPageId() << " 值有:";
+  for (int idx = 0; idx < GetSize(); idx++) {
+    std::cout << array_[idx].first << " ";
   }
-  std::cout<<std::endl;
- 
+  std::cout << std::endl;
+
   // don't worry about there is only one pair in page cause the page will be delete.
 }
 

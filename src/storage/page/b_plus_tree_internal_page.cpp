@@ -78,7 +78,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToArray(MappingType *array) {
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const ValueType &value,
                                                       KeyComparator &comparator) -> bool {
-  if(GetSize() == GetMaxSize()) {
+  if (GetSize() == GetMaxSize()) {
     return false;
   }
   int index;
@@ -93,6 +93,12 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
   array_[index].first = key;
   array_[index].second = value;
   IncreaseSize(1);
+  std::cout << "打印一遍" << std::endl;
+  for (index = 0; index < GetSize(); index++) {
+    std::cout << array_[index].second << " ";
+  }
+  std::cout << std::endl;
+
   return true;
 }
 
@@ -136,23 +142,24 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MergeInInternal(const KeyType &parentKey, M
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInFirst(const ValueType& value, const KeyType& key) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInFirst(const ValueType &value, const KeyType &key) {
   int index = 0;
   for (int move = GetSize() - 1; move >= index; move--) {
     array_[move + 1] = array_[move];
   }
   array_[index].second = value;
   array_[index + 1].first = key;
+  IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SwapKeyAtValue(KeyType& swap_key, const ValueType& value, bool get_right_key) {
-  for(int index = 0; index < GetSize(); index++) {
-    if(value == array_[index].second) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SwapKeyAtValue(KeyType &swap_key, const ValueType &value, bool get_right_key) {
+  for (int index = 0; index < GetSize(); index++) {
+    if (value == array_[index].second) {
       int target_index = get_right_key ? index + 1 : index;
-        KeyType temp = array_[target_index].first;
-        array_[target_index].first = swap_key;
-        swap_key = temp;
+      KeyType temp = array_[target_index].first;
+      array_[target_index].first = swap_key;
+      swap_key = temp;
     }
   }
 }

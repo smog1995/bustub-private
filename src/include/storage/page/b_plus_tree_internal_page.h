@@ -49,8 +49,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void GetSibling(MappingType *result, const ValueType &current_pageid);
   void Delete(const ValueType &value);
   void MergeInInternal(const KeyType &parentKey, MappingType *array, int array_size);
-  void InsertInFirst(const ValueType& value, const KeyType& key);
-  void SwapKeyAtValue(KeyType& swap_key, const ValueType& value, bool get_right_key = false);
+  void InsertInFirst(const ValueType &value, const KeyType &key);
+  void SwapKeyAtValue(KeyType &swap_key, const ValueType &value, bool get_right_key = false);
+
  private:
   // Flexible array member for page data.
   MappingType array_[1];

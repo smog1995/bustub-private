@@ -12,8 +12,8 @@
 
 #include <queue>
 #include <string>
+#include <utility>
 #include <vector>
-
 #include "common/config.h"
 #include "concurrency/transaction.h"
 #include "storage/index/index_iterator.h"
@@ -45,17 +45,18 @@ class BPlusTree {
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
-  auto FindLeafPage(page_id_t root, const KeyType &key) const -> LeafPage *;
-  void InsertInternalArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType& key, page_id_t value);
-  void InsertLeafArrayHelper(MappingType *array, int array_size, const KeyType& key, const ValueType& value);
-  void SetNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, BPlusTreePage* child,
-                                        InternalPage* left_parent, InternalPage* right_parent);
-  void SetArrayNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, InternalPage* parent);                                 
-  void InsertInParent(BPlusTreePage* left, const KeyType &key, BPlusTreePage* right);
+  auto FindLeafPage(page_id_t root, const KeyType &key) const -> page_id_t;
+  void InsertInternalArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType &key,
+                                 page_id_t value);
+  void InsertLeafArrayHelper(MappingType *array, int array_size, const KeyType &key, const ValueType &value);
+  // void SetNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, BPlusTreePage *child,
+  //                         InternalPage *left_parent, InternalPage *right_parent);
+  void SetArrayNewParentPageId(std::pair<KeyType, page_id_t> *array, int low, int high, InternalPage *parent);
+  void InsertInParent(BPlusTreePage *left, const KeyType &key, BPlusTreePage *right);
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
   // 当参数value不填时为叶节点删除操作
-  void DeleteEntry(BPlusTreePage* node, const KeyType &key, BPlusTreePage* value);
+  void DeleteEntry(BPlusTreePage *current_page, const KeyType &key, BPlusTreePage *value = nullptr);
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
