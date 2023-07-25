@@ -16,7 +16,7 @@ namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm):
 comparator_(comparator),buffer_pool_manager_(bpm) {
-  head = new LeafNode(begin_leaf->array_, current_page->GetSize());
+  head = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
   LeafPage* cur_node = head;
   page_id_t next_page_id = current_page->GetNextPageId();
   while (next_page_id != INVALID_PAGE_ID) {
@@ -29,9 +29,6 @@ comparator_(comparator),buffer_pool_manager_(bpm) {
 }
 
 
-INDEXITERATOR_TYPE::LinkList::LinkList() {
-  
-}
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator(){
   auto cur_node = head;

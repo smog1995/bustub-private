@@ -44,10 +44,11 @@ class IndexIterator {
   }
   
  private:
-  BPlusTreeLeafPage* current_leaf_page_;
+  LeafPage* current_leaf_page_;
   KeyComparator comparator_;
   BufferPoolManager *buffer_pool_manager_;
   LeafNode* head;
+  int index_in_current_page;
   // add your own private member variables here
 };
 

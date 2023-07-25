@@ -12,7 +12,6 @@
 
 #include <utility>
 #include <vector>
-
 #include "storage/page/b_plus_tree_page.h"
 namespace bustub {
 
@@ -40,7 +39,7 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
-  // friend class IndexIterator<typename KeyType, typename ValueType, typename KeyComparator>;
+  friend class IndexIterator<KeyType, ValueType, KeyComparator>;
  public:
   // After creating a new leaf page from buffer pool, must call initialize
   // method to set default values
@@ -62,5 +61,6 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   page_id_t next_page_id_;
   // Flexible array member for page data.
   MappingType array_[1];
+  
 };
 }  // namespace bustub
