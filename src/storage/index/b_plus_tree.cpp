@@ -8,6 +8,7 @@
 #include "common/logger.h"
 #include "common/rid.h"
 #include "storage/index/b_plus_tree.h"
+#include "storage/page/b_plus_tree_leaf_page.h"
 #include "storage/page/b_plus_tree_page.h"
 #include "storage/page/header_page.h"
 #include "type/value.h"
@@ -409,7 +410,15 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { 
+  KeyType key;
+  key.SetFromInteger(-1);
+  auto begin_leaf_pageid = FindLeafPage(root_page_id_, key);
+  auto begin_leaf_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(begin_leaf_pageid));
+  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_);
+  buffer_pool_manager_->UnpinPage(begin_leaf_pageid, false);
+  return index_iterator;
+ }
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -418,8 +427,11 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE()
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
-  FindLeafPage(root_page_id_, key);
-  return INDEXITERATOR_TYPE();
+  auto begin_leaf_pageid = FindLeafPage(root_page_id_, key);
+  auto begin_leaf_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(begin_leaf_pageid));
+  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_);
+  buffer_pool_manager_->UnpinPage(begin_leaf_pageid, false);
+  return index_iterator;
 }
 
 /*
@@ -428,7 +440,9 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+  return 
+}
 
 /**
  * @return Page id of the root of this tree

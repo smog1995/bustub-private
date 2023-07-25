@@ -37,6 +37,11 @@ namespace bustub {
  * | ParentPageId (4) | PageId (4) | NextPageId (4)
  *  -----------------------------------------------
  */
+//使用模板类前，需要先声明
+ //在bplustreepage中有  #define INDEX_TEMPLATE_ARGUMENTS template <typename KeyType, typename ValueType, typename KeyComparator>，
+//所以下面一行声明等同于 template <typename KeyType, typename ValueType, typename KeyComparator> class IndexIterator;
+INDEX_TEMPLATE_ARGUMENTS class IndexIterator;
+
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
   friend class IndexIterator<KeyType, ValueType, KeyComparator>;
@@ -63,4 +68,5 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   MappingType array_[1];
   
 };
+
 }  // namespace bustub

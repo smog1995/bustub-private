@@ -16,40 +16,53 @@ namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm):
 comparator_(comparator),buffer_pool_manager_(bpm) {
-  head = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
-  LeafPage* cur_node = head;
-  page_id_t next_page_id = current_page->GetNextPageId();
+  head_ = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
+  LeafNode* cur_node = head_;
+  page_id_t next_page_id = begin_leaf->GetNextPageId();
+  LeafNode* p;
   while (next_page_id != INVALID_PAGE_ID) {
-    current_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(next_page_id));
-    auto p =new LeafNode(current_page->array_, current_page->GetSize());
-    cur_node->next = p;
-    cur_node = cur_node->next;
-    next_page_id = p->GetNextPageId();
+    auto current_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(next_page_id));
+    p =new LeafNode(current_page->array_, current_page->GetSize());
+    cur_node->next_node_ = p;
+    cur_node = cur_node->next_node_;
+    next_page_id = current_page->GetNextPageId();
+    buffer_pool_manager_->UnpinPage(current_page->GetPageId(), false);
   }
+  tail_ = p;
+  p->next_node_ = nullptr;
 }
 
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator(){
-  auto cur_node = head;
+  auto cur_node = head_;
   while(cur_node != nullptr) {
-    auto next_node = cur_node->next;
+    auto next_node = cur_node->next_node_;
     delete cur_node;
     cur_node = next_node;
   }
 }  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool { throw std::runtime_error("unimplemented"); }
+auto INDEXITERATOR_TYPE::IsEnd() -> bool {
+   return current_leaf_node_ == nullptr || 
+   (current_leaf_node_ == tail_ && index_in_current_page_ >= current_leaf_node_->size_);
+}
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { throw std::runtime_error("unimplemented"); }
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { 
+  return current_leaf_node_->array_[index_in_current_page_];
+ }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & { 
-  if (index_in_current_page_ >= current_leaf_page_->GetSize()) {
-    current_leaf_page_ = reinterpret_cast<BPlusTreeLeafPage*> ()
+
+  index_in_current_page_++;
+  if (index_in_current_page_ >= current_leaf_node_->size_) {
+    current_leaf_node_ = current_leaf_node_->next_node_;
+    index_in_current_page_ = 0;
   }
+  return *this;
  }
 
 template class IndexIterator<GenericKey<4>, RID, GenericComparator<4>>;

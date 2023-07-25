@@ -33,22 +33,27 @@ class IndexIterator {
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool { throw std::runtime_error("unimplemented"); }
+  auto operator==(const IndexIterator &itr) const -> bool {
+    return this == itr && index_in_current_page_ == itr.index_in_current_page_ && current_leaf_node_ == itr.current_leaf_node_;
+  };
 
-  auto operator!=(const IndexIterator &itr) const -> bool { throw std::runtime_error("unimplemented"); }
+  auto operator!=(const IndexIterator &itr) const -> bool {
+    return this != itr || index_in_current_page_ != itr.index_in_current_page_ || current_leaf_node_ != itr.current_leaf_node_;
+  }
   struct LeafNode{
     MappingType *array_;
     int size_;
     LeafNode* next_node_;
     LeafNode(MappingType *array, int size):array_(array),size_() {};
-  }
+  };
   
  private:
-  LeafPage* current_leaf_page_;
   KeyComparator comparator_;
   BufferPoolManager *buffer_pool_manager_;
-  LeafNode* head;
-  int index_in_current_page;
+  LeafNode* head_, *tail_;
+  LeafNode* current_leaf_node_;
+  int index_in_current_page_;
+
   // add your own private member variables here
 };
 
