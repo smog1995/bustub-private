@@ -24,6 +24,7 @@ class IndexIterator {
   using LeafPage = BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>;
  public:
   // you may define your own constructor based on your member variables
+  explicit IndexIterator(KeyComparator &comparator);
   IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm);
   ~IndexIterator();  // NOLINT
 
@@ -34,17 +35,21 @@ class IndexIterator {
   auto operator++() -> IndexIterator &;
 
   auto operator==(const IndexIterator &itr) const -> bool {
-    return this == itr && index_in_current_page_ == itr.index_in_current_page_ && current_leaf_node_ == itr.current_leaf_node_;
+    return index_in_current_page_ == itr.index_in_current_page_ && current_leaf_node_ == itr.current_leaf_node_;
   };
 
   auto operator!=(const IndexIterator &itr) const -> bool {
-    return this != itr || index_in_current_page_ != itr.index_in_current_page_ || current_leaf_node_ != itr.current_leaf_node_;
+    return index_in_current_page_ != itr.index_in_current_page_ || current_leaf_node_ != itr.current_leaf_node_;
   }
   struct LeafNode{
     MappingType *array_;
     int size_;
     LeafNode* next_node_;
     LeafNode(MappingType *array, int size):array_(array),size_() {};
+    ~LeafNode() {
+      array_ = nullptr;
+      std::cout<<"delete"<<std::endl;
+    }
   };
   
  private:

@@ -441,7 +441,8 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
-  return 
+  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(comparator_);
+  return index_iterator;
 }
 
 /**

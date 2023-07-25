@@ -19,24 +19,30 @@ comparator_(comparator),buffer_pool_manager_(bpm) {
   head_ = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
   LeafNode* cur_node = head_;
   page_id_t next_page_id = begin_leaf->GetNextPageId();
-  LeafNode* p;
+  
   while (next_page_id != INVALID_PAGE_ID) {
     auto current_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(next_page_id));
-    p =new LeafNode(current_page->array_, current_page->GetSize());
+    auto p =new LeafNode(current_page->array_, current_page->GetSize());
     cur_node->next_node_ = p;
     cur_node = cur_node->next_node_;
     next_page_id = current_page->GetNextPageId();
     buffer_pool_manager_->UnpinPage(current_page->GetPageId(), false);
   }
-  tail_ = p;
-  p->next_node_ = nullptr;
+  tail_ = cur_node;
+  cur_node->next_node_ = nullptr;
+  current_leaf_node_ = head_;
+  index_in_current_page_ = 0;
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+INDEXITERATOR_TYPE::IndexIterator(KeyComparator &comparator):comparator_(comparator),
+current_leaf_node_(nullptr),index_in_current_page_(0) {}
 
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator(){
   auto cur_node = head_;
-  while(cur_node != nullptr) {
+  while(cur_node) {
     auto next_node = cur_node->next_node_;
     delete cur_node;
     cur_node = next_node;
