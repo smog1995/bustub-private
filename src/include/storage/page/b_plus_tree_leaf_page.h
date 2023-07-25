@@ -14,7 +14,6 @@
 #include <vector>
 
 #include "storage/page/b_plus_tree_page.h"
-
 namespace bustub {
 
 #define B_PLUS_TREE_LEAF_PAGE_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
@@ -41,6 +40,7 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
+  // friend class IndexIterator<typename KeyType, typename ValueType, typename KeyComparator>;
  public:
   // After creating a new leaf page from buffer pool, must call initialize
   // method to set default values
