@@ -14,11 +14,19 @@ namespace bustub {
  * set your own input parameters
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm):
+INDEXITERATOR_TYPE::IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm, const KeyType& key):
 comparator_(comparator),buffer_pool_manager_(bpm) {
   head_ = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
   LeafNode* cur_node = head_;
   page_id_t next_page_id = begin_leaf->GetNextPageId();
+  index_in_current_page_ = 0;
+  KeyType invalid_key;
+  invalid_key.SetFromInteger(-1);
+  if (comparator_(key, invalid_key) != 0) {
+    while (comparator_(key, head_->array_[index_in_current_page_].first) != 0) {
+      index_in_current_page_++;
+    }
+  }
   
   while (next_page_id != INVALID_PAGE_ID) {
     auto current_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(next_page_id));
@@ -31,12 +39,12 @@ comparator_(comparator),buffer_pool_manager_(bpm) {
   tail_ = cur_node;
   cur_node->next_node_ = nullptr;
   current_leaf_node_ = head_;
-  index_in_current_page_ = 0;
+  
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator(KeyComparator &comparator):comparator_(comparator),
-current_leaf_node_(nullptr),index_in_current_page_(0) {}
+head_(nullptr),tail_(nullptr),current_leaf_node_(nullptr),index_in_current_page_(0){}
 
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -51,8 +59,7 @@ INDEXITERATOR_TYPE::~IndexIterator(){
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
-   return current_leaf_node_ == nullptr || 
-   (current_leaf_node_ == tail_ && index_in_current_page_ >= current_leaf_node_->size_);
+   return current_leaf_node_ == nullptr;
 }
 
 INDEX_TEMPLATE_ARGUMENTS

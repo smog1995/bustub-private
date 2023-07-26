@@ -415,7 +415,7 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   key.SetFromInteger(-1);
   auto begin_leaf_pageid = FindLeafPage(root_page_id_, key);
   auto begin_leaf_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(begin_leaf_pageid));
-  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_);
+  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_, key);
   buffer_pool_manager_->UnpinPage(begin_leaf_pageid, false);
   return index_iterator;
  }
@@ -429,7 +429,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
   auto begin_leaf_pageid = FindLeafPage(root_page_id_, key);
   auto begin_leaf_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(begin_leaf_pageid));
-  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_);
+  IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_, key);
   buffer_pool_manager_->UnpinPage(begin_leaf_pageid, false);
   return index_iterator;
 }

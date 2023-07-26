@@ -25,7 +25,7 @@ class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
   explicit IndexIterator(KeyComparator &comparator);
-  IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm);
+  IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm, const KeyType& key);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
@@ -45,7 +45,7 @@ class IndexIterator {
     MappingType *array_;
     int size_;
     LeafNode* next_node_;
-    LeafNode(MappingType *array, int size):array_(array),size_() {};
+    LeafNode(MappingType *array, int size):array_(array),size_(size) {};
     ~LeafNode() {
       array_ = nullptr;
       std::cout<<"delete"<<std::endl;
