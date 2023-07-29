@@ -11,6 +11,7 @@
 #pragma once
 
 #include <queue>
+#include <shared_mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,7 +46,8 @@ class BPlusTree {
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
-  auto FindLeafPage(page_id_t root, const KeyType &key) const -> page_id_t;
+  void GetNeedUpdatePage(page_id_t root, const KeyType &key, Transaction *transaction, int call_fun);
+  auto FindLeafPage(const KeyType &key) -> LeafPage *;
   void InsertInternalArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType &key,
                                  page_id_t value);
   void InsertLeafArrayHelper(MappingType *array, int array_size, const KeyType &key, const ValueType &value);
@@ -55,8 +57,9 @@ class BPlusTree {
   void InsertInParent(BPlusTreePage *left, const KeyType &key, BPlusTreePage *right);
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
+  auto InsertHelper(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool;
   // 当参数value不填时为叶节点删除操作
-  void DeleteEntry(BPlusTreePage *current_page, const KeyType &key, BPlusTreePage *value = nullptr);
+  void DeleteEntry(BPlusTreePage *current_page, const KeyType &key, BPlusTreePage *value, Transaction *transaction);
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
@@ -100,6 +103,12 @@ class BPlusTree {
   int internal_max_size_;
   int leaf_min_size_;
   int internal_min_size_;
+  std::shared_mutex share_latch_;
+  /*
+   * 用于获取根节点时的锁，如果两个插入操作获取了同一根节点页，然后第一个插入操作获取该页的锁后阻塞了第二个线程的插入，同时又发生了分裂生成新根，
+   * 此时根节点更新，但是第二个线程会误以为根节点页依旧没变，仍从所在节点开始进行插入。
+   */
+  std::shared_mutex share_root_latch_;
 };
 
 }  // namespace bustub

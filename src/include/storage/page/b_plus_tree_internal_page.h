@@ -55,5 +55,6 @@ class BPlusTreeInternalPage : public BPlusTreePage {
  private:
   // Flexible array member for page data.
   MappingType array_[1];
+  std::shared_mutex latch_;
 };
 }  // namespace bustub

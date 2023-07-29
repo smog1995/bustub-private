@@ -17,15 +17,14 @@
 namespace bustub {
 #define INDEXITERATOR_TYPE IndexIterator<KeyType, ValueType, KeyComparator>
 
-
-
 INDEX_TEMPLATE_ARGUMENTS
 class IndexIterator {
   using LeafPage = BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>;
+
  public:
   // you may define your own constructor based on your member variables
   explicit IndexIterator(KeyComparator &comparator);
-  IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm, const KeyType& key);
+  IndexIterator(LeafPage *begin_leaf, KeyComparator &comparator, BufferPoolManager *bpm, const KeyType &key);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
@@ -41,26 +40,20 @@ class IndexIterator {
   auto operator!=(const IndexIterator &itr) const -> bool {
     return index_in_current_page_ != itr.index_in_current_page_ || current_leaf_node_ != itr.current_leaf_node_;
   }
-  struct LeafNode{
-    MappingType *array_;
-    int size_;
-    LeafNode* next_node_;
-    LeafNode(MappingType *array, int size):array_(array),size_(size) {};
-    ~LeafNode() {
-      array_ = nullptr;
-      std::cout<<"delete"<<std::endl;
-    }
+  struct LeafNode {
+    LeafNode *next_node_;
+    LeafPage *page_;
+    explicit LeafNode(LeafPage *page) : page_(page) {}
   };
-  
+
  private:
   KeyComparator comparator_;
   BufferPoolManager *buffer_pool_manager_;
-  LeafNode* head_, *tail_;
-  LeafNode* current_leaf_node_;
+  LeafNode *head_, *tail_;
+  LeafNode *current_leaf_node_;
   int index_in_current_page_;
 
   // add your own private member variables here
 };
-
 
 }  // namespace bustub

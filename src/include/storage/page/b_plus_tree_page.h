@@ -13,9 +13,11 @@
 #include <cassert>
 #include <climits>
 #include <cstdlib>
+#include <shared_mutex>
 #include <string>
 
 #include "buffer/buffer_pool_manager.h"
+#include "common/rwlatch.h"
 #include "storage/index/generic_key.h"
 
 namespace bustub {
@@ -61,6 +63,7 @@ class BPlusTreePage {
   void SetPageId(page_id_t page_id);
 
   void SetLSN(lsn_t lsn = INVALID_LSN);
+  auto GetLatch() -> ReaderWriterLatch &;
 
  private:
   // member variable, attributes that both internal and leaf page share (size:24B)
@@ -70,6 +73,7 @@ class BPlusTreePage {
   int max_size_ __attribute__((__unused__));
   page_id_t parent_page_id_ __attribute__((__unused__));
   page_id_t page_id_ __attribute__((__unused__));
+  ReaderWriterLatch latch_;
 };
 
 }  // namespace bustub

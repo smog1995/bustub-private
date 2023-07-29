@@ -18,7 +18,9 @@ namespace bustub {
 #define B_PLUS_TREE_LEAF_PAGE_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
 #define LEAF_PAGE_HEADER_SIZE 28
 #define LEAF_PAGE_SIZE ((BUSTUB_PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / sizeof(MappingType))
-
+#define FUNCTION_FIND 0
+#define FUNCTION_INSERT 1
+#define FUNCTION_DELETE 2
 /**
  * Store indexed key and record id(record id = page id combined with slot id,
  * see include/common/rid.h for detailed implementation) together within leaf
@@ -37,15 +39,19 @@ namespace bustub {
  * | ParentPageId (4) | PageId (4) | NextPageId (4)
  *  -----------------------------------------------
  */
-//使用模板类前，需要先声明
- //在bplustreepage中有  #define INDEX_TEMPLATE_ARGUMENTS template <typename KeyType, typename ValueType, typename KeyComparator>，
-//所以下面一行声明等同于 template <typename KeyType, typename ValueType, typename KeyComparator> class IndexIterator;
+  //  使用模板类前，需要先声明
+  //  在bplustreepage中有  #define INDEX_TEMPLATE_ARGUMENTS template <typename KeyType, typename ValueType, typename
+  //  KeyComparator>，
+  //  所以下面一行声明等同于
+  // template <typename KeyType, typename ValueType, typename KeyComparator> class IndexIterator;
 INDEX_TEMPLATE_ARGUMENTS class IndexIterator;
 
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
   friend class IndexIterator<KeyType, ValueType, KeyComparator>;
+
  public:
+  std::mutex latch_;
   // After creating a new leaf page from buffer pool, must call initialize
   // method to set default values
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID, int max_size = LEAF_PAGE_SIZE);
@@ -66,7 +72,6 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   page_id_t next_page_id_;
   // Flexible array member for page data.
   MappingType array_[1];
-  
 };
 
 }  // namespace bustub

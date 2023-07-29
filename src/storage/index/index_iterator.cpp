@@ -14,43 +14,46 @@ namespace bustub {
  * set your own input parameters
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(LeafPage* begin_leaf, KeyComparator& comparator, BufferPoolManager* bpm, const KeyType& key):
-comparator_(comparator),buffer_pool_manager_(bpm) {
-  head_ = new LeafNode(begin_leaf->array_, begin_leaf->GetSize());
-  LeafNode* cur_node = head_;
+INDEXITERATOR_TYPE::IndexIterator(LeafPage *begin_leaf, KeyComparator &comparator, BufferPoolManager *bpm,
+                                  const KeyType &key)
+    : comparator_(comparator), buffer_pool_manager_(bpm) {
+  head_ = new LeafNode(begin_leaf);
+  LeafNode *cur_node = head_;
   page_id_t next_page_id = begin_leaf->GetNextPageId();
   index_in_current_page_ = 0;
   KeyType invalid_key;
   invalid_key.SetFromInteger(-1);
   if (comparator_(key, invalid_key) != 0) {
-    while (comparator_(key, head_->array_[index_in_current_page_].first) != 0) {
+    while (comparator_(key, head_->page_->array_[index_in_current_page_].first) != 0) {
       index_in_current_page_++;
     }
   }
-  
+
   while (next_page_id != INVALID_PAGE_ID) {
-    auto current_page = reinterpret_cast<LeafPage*>(buffer_pool_manager_->FetchPage(next_page_id));
-    auto p =new LeafNode(current_page->array_, current_page->GetSize());
+    auto current_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(next_page_id));
+    auto p = new LeafNode(current_page);
     cur_node->next_node_ = p;
     cur_node = cur_node->next_node_;
     next_page_id = current_page->GetNextPageId();
-    buffer_pool_manager_->UnpinPage(current_page->GetPageId(), false);
+    buffer_pool_manager_->UnpinPage(cur_node->page_->GetPageId(), false);
   }
   tail_ = cur_node;
   cur_node->next_node_ = nullptr;
   current_leaf_node_ = head_;
-  
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(KeyComparator &comparator):comparator_(comparator),
-head_(nullptr),tail_(nullptr),current_leaf_node_(nullptr),index_in_current_page_(0){}
-
+INDEXITERATOR_TYPE::IndexIterator(KeyComparator &comparator)
+    : comparator_(comparator), head_(nullptr), tail_(nullptr), current_leaf_node_(nullptr), index_in_current_page_(0) {}
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::~IndexIterator(){
+INDEXITERATOR_TYPE::~IndexIterator() {
+  if (current_leaf_node_ != nullptr) {
+    current_leaf_node_->page_->GetLatch().RUnlock();
+    buffer_pool_manager_->UnpinPage(current_leaf_node_->page_->GetPageId(), false);
+  }
   auto cur_node = head_;
-  while(cur_node) {
+  while (cur_node) {
     auto next_node = cur_node->next_node_;
     delete cur_node;
     cur_node = next_node;
@@ -58,25 +61,28 @@ INDEXITERATOR_TYPE::~IndexIterator(){
 }  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool {
-   return current_leaf_node_ == nullptr;
+auto INDEXITERATOR_TYPE::IsEnd() -> bool { return current_leaf_node_ == nullptr; }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
+  return current_leaf_node_->page_->array_[index_in_current_page_];
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { 
-  return current_leaf_node_->array_[index_in_current_page_];
- }
-
-INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & { 
-
+auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   index_in_current_page_++;
-  if (index_in_current_page_ >= current_leaf_node_->size_) {
+  if (index_in_current_page_ >= current_leaf_node_->page_->GetSize()) {
+    current_leaf_node_->page_->GetLatch().RUnlock();
+    buffer_pool_manager_->UnpinPage(current_leaf_node_->page_->GetPageId(), false);
     current_leaf_node_ = current_leaf_node_->next_node_;
+    if (current_leaf_node_ != nullptr) {
+      current_leaf_node_->page_->GetLatch().RLock();
+      buffer_pool_manager_->FetchPage(current_leaf_node_->page_->GetPageId());
+    }
     index_in_current_page_ = 0;
   }
   return *this;
- }
+}
 
 template class IndexIterator<GenericKey<4>, RID, GenericComparator<4>>;
 
