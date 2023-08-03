@@ -46,6 +46,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   std::lock_guard<std::mutex> lock(latch_);
   // std::cout << "NewPgImp:";
   if (free_list_.empty() && replacer_->Size() == 0) {
+    std::cout << "null point!!!";
     // std::cout << "freelist is full and all frames are pinned." << std::endl;
     return nullptr;
   }
@@ -94,6 +95,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   }
   if (free_list_.empty() && replacer_->Size() == 0) {
     // std::cout << " it doesn't exists in buffer pool, and freelist is full and all frames are pinned." << std::endl;
+    std::cout << "fetch null point page";
     return nullptr;
   }
   if (!free_list_.empty()) {
@@ -130,6 +132,7 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
     if (pages_[frame_id].pin_count_ <= 0) {
       replacer_->SetEvictable(frame_id, true);
     }
+    // printf("pageid %d pincount %d \n",page_id,pages_[frame_id].pin_count_);
     // std::cout << "unpinpgimp success:" << page_id << " is_dirty:" << is_dirty << std::endl;
     return true;
   }

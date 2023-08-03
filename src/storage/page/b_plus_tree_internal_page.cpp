@@ -93,12 +93,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
   array_[index].first = key;
   array_[index].second = value;
   IncreaseSize(1);
-  std::cout << "打印一遍" << std::endl;
+  // std::cout << "打印一遍" << std::endl;
+  // printf("Insert In Internal:");
   for (index = 0; index < GetSize(); index++) {
-    std::cout << array_[index].second << " ";
+    // std::cout << array_[index].second << " ";
+    // printf("%d ", array_[index].second);
   }
-  std::cout << std::endl;
-
+  // std::cout << std::endl;
+  // printf("end\n");
   return true;
 }
 
@@ -119,15 +121,26 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetSibling(MappingType *result, const Value
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Delete(const ValueType &value) {
+  bool delete_flag = false;
   for (int index = 0; index < GetSize(); index++) {
     if (value == array_[index].second) {
       for (int move = index; move < GetSize() - 1; move++) {
         array_[move] = array_[move + 1];
       }
+      delete_flag = true;
       break;
     }
   }
-  DecrementSize();
+
+  // printf("delete result:%d ,pageid: %d\n",delete_flag,value);
+  if (delete_flag) {
+    DecrementSize();
+  }
+  // printf("delete result: ");
+  // for (auto &ele : array_) {
+  //   printf("%d ", ele.second);
+  // }
+  // printf("\n");
 }
 
 INDEX_TEMPLATE_ARGUMENTS

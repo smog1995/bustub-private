@@ -25,12 +25,11 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
     : index_name_(std::move(name)),
       root_page_id_(INVALID_PAGE_ID),
       buffer_pool_manager_(buffer_pool_manager),
-      comparator_(comparator) {
-  leaf_max_size_ = leaf_max_size < 250 ? leaf_max_size : 250;
-  internal_max_size_ = internal_max_size < 250 ? internal_max_size : 250;
+      comparator_(comparator),
+      leaf_max_size_(leaf_max_size),
+      internal_max_size_(internal_max_size) {
   leaf_min_size_ = ceil(static_cast<double>(leaf_max_size_) / 2);
   internal_min_size_ = ceil(static_cast<double>(internal_max_size_) / 2);
-
   // std::cout<<internal_min_size_<<std::endl;
 }
 
@@ -62,52 +61,108 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return root_page_id_ == INVALID_P
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key) -> LeafPage * {
-  printf("findLeafPage\n");
-  BPlusTreePage *target_page = nullptr;
-  while (target_page == nullptr || !target_page->IsRootPage()) {
-    if (target_page != nullptr) {
-      target_page->GetLatch().RUnlock();
-      buffer_pool_manager_->UnpinPage(target_page->GetPageId(), false);
-    }
-    share_root_latch_.lock_shared();
-    target_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
+  share_root_latch_.lock_shared();
+  auto target_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
+  target_page->GetLatch().RLock();
+  if (target_page->IsLeafPage()) {
     share_root_latch_.unlock_shared();
-    target_page->GetLatch().RLock();
-  }
-  while (!target_page->IsLeafPage()) {
-    auto internal_page = reinterpret_cast<InternalPage *>(target_page);
-    for (int index = 1; index < internal_page->GetSize(); index++) {
-      int compare_result = comparator_(key, internal_page->KeyAt(index));
-      if ((compare_result < 0 && index == 1) || (compare_result >= 0 && index == internal_page->GetSize() - 1) ||
-          (compare_result >= 0 && comparator_(key, internal_page->KeyAt(index + 1)) < 0)) {
-        int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
+  } else {
+    while (!target_page->IsLeafPage()) {
+      auto internal_page = reinterpret_cast<InternalPage *>(target_page);
+      for (int index = 1; index < internal_page->GetSize(); index++) {
+        int compare_result = comparator_(key, internal_page->KeyAt(index));
+        if ((compare_result < 0 && index == 1) || (compare_result >= 0 && index == internal_page->GetSize() - 1) ||
+            (compare_result >= 0 && comparator_(key, internal_page->KeyAt(index + 1)) < 0)) {
+          int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
 
-        target_page =
-            reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(internal_page->ValueAt(res_index)));
-        target_page->GetLatch().RLock();
-        internal_page->GetLatch().RUnlock();
-        buffer_pool_manager_->UnpinPage(internal_page->GetPageId(), false);
-        break;
+          target_page =
+              reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(internal_page->ValueAt(res_index)));
+          target_page->GetLatch().RLock();
+          internal_page->GetLatch().RUnlock();
+          if (internal_page->IsRootPage()) {
+            share_root_latch_.unlock_shared();
+          }
+          buffer_pool_manager_->UnpinPage(internal_page->GetPageId(), false);
+          break;
+        }
       }
     }
   }
-
   return reinterpret_cast<LeafPage *>(target_page);
 }
+
+// INDEX_TEMPLATE_ARGUMENTS
+// void BPLUSTREE_TYPE::WriteFindLeafPage(const KeyType &key, Transaction *transaction, int call_fun) {
+//   bool pessimistic_flag = false;
+//   // printf("OPTwritepage\n");
+//   share_root_latch_.unlock();
+//   share_root_latch_.lock_shared();
+//   auto target_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
+//   if (target_page->IsLeafPage()) {
+//     target_page->GetLatch().WLock();
+//     if ((target_page->GetSize() == target_page->GetMaxSize() && call_fun == INSERT_FUNCTION) ||
+//         (target_page->GetSize() <= target_page->GetMinSize() && call_fun == DELETE_FUNCTION)) {
+//       pessimistic_flag = true;
+//     }
+//   } else {
+//     target_page->GetLatch().RLock();
+//   }
+//   while (!target_page->IsLeafPage() && !pessimistic_flag) {
+//     auto internal_page = reinterpret_cast<InternalPage *>(target_page);
+//     for (int index = 1; index < internal_page->GetSize(); index++) {
+//       int compare_result = comparator_(key, internal_page->KeyAt(index));
+//       if ((compare_result < 0 && index == 1) || (compare_result >= 0 && index == internal_page->GetSize() - 1) ||
+//           (compare_result >= 0 && comparator_(key, internal_page->KeyAt(index + 1)) < 0)) {
+//         int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
+//         target_page =
+//             reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(internal_page->ValueAt(res_index)));
+//         if (target_page->IsLeafPage()) {
+//           target_page->GetLatch().WLock();
+//         } else {
+//           target_page->GetLatch().RLock();
+//         }
+//         internal_page->GetLatch().RUnlock();
+//         buffer_pool_manager_->UnpinPage(internal_page->GetPageId(), false);
+//         if (internal_page->IsRootPage()) {
+//           share_root_latch_.unlock_shared();
+//         }
+//         if ((target_page->GetSize() == target_page->GetMaxSize() && call_fun == INSERT_FUNCTION) ||
+//             (target_page->GetSize() <= target_page->GetMinSize() && call_fun == DELETE_FUNCTION)) {
+//           pessimistic_flag = true;
+//         }
+//         break;
+//       }
+//     }
+//   }
+//   //  悲观写
+//   if (pessimistic_flag) {
+//     // printf("need PESS write\n");
+//     if (target_page->IsLeafPage()) {
+//       target_page->GetLatch().WUnlock();
+//     } else {
+//       target_page->GetLatch().RUnlock();
+//     }
+//     if (target_page->IsRootPage()) {
+//       share_root_latch_.unlock_shared();
+//     }
+//     buffer_pool_manager_->UnpinPage(target_page->GetPageId(), false);
+//     return;
+//   }
+//   transaction->AddIntoPageSet(reinterpret_cast<Page *>(target_page));
+// }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::WriteFindLeafPage(const KeyType &key, Transaction *transaction, int call_fun) -> BPlusTreePage * {
   bool pessimistic_flag;
-  printf("OPTwritepage\n");
+  // printf("OPTwritepage\n");
   BPlusTreePage *target_page = nullptr;
-  while (target_page == nullptr || target_page->GetPageId() != root_page_id_) {
+  while (target_page == nullptr || !target_page->IsRootPage()) {
     if (target_page != nullptr) {
       if (target_page->IsLeafPage()) {
         target_page->GetLatch().WUnlock();
       } else {
         target_page->GetLatch().RUnlock();
       }
-      buffer_pool_manager_->UnpinPage(target_page->GetPageId(), false);
     }
     share_root_latch_.lock_shared();
     pessimistic_flag = false;
@@ -123,13 +178,11 @@ auto BPLUSTREE_TYPE::WriteFindLeafPage(const KeyType &key, Transaction *transact
       target_page->GetLatch().RLock();
     }
   }
-  printf("current node's children num:%d \n", target_page->GetSize());
+
   while (!target_page->IsLeafPage() && !pessimistic_flag) {
     auto internal_page = reinterpret_cast<InternalPage *>(target_page);
     for (int index = 1; index < internal_page->GetSize(); index++) {
       int compare_result = comparator_(key, internal_page->KeyAt(index));
-
-      printf("%d ", internal_page->ValueAt(index));
       if ((compare_result < 0 && index == 1) || (compare_result >= 0 && index == internal_page->GetSize() - 1) ||
           (compare_result >= 0 && comparator_(key, internal_page->KeyAt(index + 1)) < 0)) {
         int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
@@ -142,7 +195,6 @@ auto BPLUSTREE_TYPE::WriteFindLeafPage(const KeyType &key, Transaction *transact
         }
         internal_page->GetLatch().RUnlock();
         buffer_pool_manager_->UnpinPage(internal_page->GetPageId(), false);
-        // printf("(找到目标节点:%d)", target_page->GetPageId());
         // if (internal_page->IsRootPage()) {
         //   share_root_latch_.unlock_shared();
         // }
@@ -153,11 +205,10 @@ auto BPLUSTREE_TYPE::WriteFindLeafPage(const KeyType &key, Transaction *transact
         break;
       }
     }
-    printf("\n");
   }
   //  悲观写
   if (pessimistic_flag) {
-    printf("(key %ld)need PESS write\n", key.ToString());
+    // printf("need PESS write\n");
     if (target_page->IsLeafPage()) {
       target_page->GetLatch().WUnlock();
     } else {
@@ -196,10 +247,9 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::GetNeedUpdatePage(const KeyType &key, Transaction *transaction, int call_fun) {
   BPlusTreePage *target_page = nullptr;
 
-  while (target_page == nullptr || target_page->GetPageId() != root_page_id_) {
+  while (target_page == nullptr || !target_page->IsRootPage()) {
     if (target_page != nullptr) {
       target_page->GetLatch().WUnlock();
-      buffer_pool_manager_->UnpinPage(target_page->GetPageId(), false);
     }
     share_root_latch_.lock();
     target_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
@@ -209,28 +259,25 @@ void BPLUSTREE_TYPE::GetNeedUpdatePage(const KeyType &key, Transaction *transact
   // printf("GetNeedPageFun():");
   // target_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
 
-  // printf("wlock page:%d ", target_page->GetPageId());
+  printf("wlock page:%d ", target_page->GetPageId());
   transaction->AddIntoPageSet(reinterpret_cast<Page *>(target_page));
   while (!target_page->IsLeafPage()) {
     auto internal_page = reinterpret_cast<InternalPage *>(target_page);
-    // printf("当前节点的孩子数量:%d -->\n",internal_page->GetSize());
     for (int index = 1; index < internal_page->GetSize(); index++) {
-      printf("%d ", internal_page->ValueAt(index));
       int compare_result = comparator_(key, internal_page->KeyAt(index));
       if ((compare_result < 0 && index == 1) || (compare_result >= 0 && index == internal_page->GetSize() - 1) ||
           (compare_result >= 0 && comparator_(key, internal_page->KeyAt(index + 1)) < 0)) {
         int res_index = (index == 1 && compare_result < 0) ? index - 1 : index;
         target_page =
             reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(internal_page->ValueAt(res_index)));
-        // assert(target_page != nullptr);
+        printf("lock %d:", target_page->GetPageId());
         target_page->GetLatch().WLock();  //  kazhele
-
-        // printf(" success ");
+        printf(" success ");
         // printf("%d ", target_page->GetPageId());
         if ((target_page->GetSize() < target_page->GetMaxSize() && call_fun == INSERT_FUNCTION) ||
             (target_page->GetSize() > target_page->GetMinSize() && call_fun == DELETE_FUNCTION)) {  // safe，解父节点锁
           auto page_set = transaction->GetPageSet();
-          // printf("unlock parent:(");
+          printf("unlock parent:(");
           while (!page_set->empty()) {
             // printf("\ncan unlock parent:");
             auto parent_page = reinterpret_cast<BPlusTreePage *>(transaction->GetPageSet()->back());
@@ -238,20 +285,19 @@ void BPLUSTREE_TYPE::GetNeedUpdatePage(const KeyType &key, Transaction *transact
             // if (parent_page->IsRootPage()) {
             //   share_root_latch_.unlock();
             // }
-            // printf(" %d ", parent_page->GetPageId());
+            printf(" %d ", parent_page->GetPageId());
             transaction->GetPageSet()->pop_back();
             buffer_pool_manager_->UnpinPage(parent_page->GetPageId(), false);
           }
-          // printf(")");
+          printf(")");
         }
         transaction->AddIntoPageSet(reinterpret_cast<Page *>(target_page));
 
         break;
       }
     }
-    // printf("\n");
   }
-  // printf("lock finish.\n");
+  printf("lock finish.\n");
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -320,11 +366,10 @@ void BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *left, const KeyType &key, BPl
     UpdateRootPageId();
     buffer_pool_manager_->UnpinPage(root_page_id_, true);
     share_root_latch_.unlock();
-    // printf("generate new root.old root id: %d , new root id: %d.\n", left->GetPageId());
-    // new_internal_page->GetPageId());
+    printf("generate new root.old root id: %d , new root id: %d.\n", left->GetPageId(), new_internal_page->GetPageId());
   } else {  // 第二种是父节点是内部节点，直接插入；
-    printf("insert in internal,left page id %d insert in parent page %d.\n", left->GetPageId(),
-           left->GetParentPageId());
+    // printf("insert in internal,left page id %d insert in parent page %d.\n", left->GetPageId(),
+    //  left->GetParentPageId());
     page_id_t new_internal_pageid;
     auto parent_internal_page =
         reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(left->GetParentPageId()));
@@ -336,7 +381,6 @@ void BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *left, const KeyType &key, BPl
       InsertInternalArrayHelper(array, internal_max_size_, key, right->GetPageId());
       new_internal_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_internal_pageid));
       new_internal_page->Init(new_internal_pageid, -1, internal_max_size_);
-
       new_internal_page->SetPageType(IndexPageType::INTERNAL_PAGE);
       KeyType mid_internal_key = array[internal_max_size_ / 2 + 1].first;
       array[internal_max_size_ / 2 + 1].first.SetFromInteger(0);  // 数组中这个位置的中间值会放到父节点中
@@ -380,7 +424,7 @@ auto BPLUSTREE_TYPE::InsertHelper(const KeyType &key, const ValueType &value, Tr
     target_leaf_page->InsertInLeaf(key, value, comparator_);
     result = true;
   } else if (target_leaf_page->GetSize() == leaf_max_size_) {  //  如果叶子满了，需要进行分裂
-    printf("left page id %d occurs new split. ", target_leaf_page->GetPageId());
+    // printf("left page id %d occurs new split. ", target_leaf_page->GetPageId());
     page_id_t another_leaf_pageid;
     auto another_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&another_leaf_pageid));
     another_leaf_page->Init(another_leaf_pageid, -1, leaf_max_size_);
@@ -425,17 +469,21 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   share_root_latch_.unlock();
   bool result = InsertHelper(key, value, transaction);
   auto page_set = transaction->GetPageSet();
-  // printf("now clear set(has %lu size):", page_set->size());
+  printf("now clear set(has %lu size):", page_set->size());
 
   while (!page_set->empty()) {
     auto page = reinterpret_cast<BPlusTreePage *>(page_set->back());
     page_set->pop_back();
     page->GetLatch().WUnlock();
-
+    // if (page->IsRootPage()) {
+    //   share_root_latch_.unlock();
+    // }
+    printf("%d ", page->GetPageId());
+    // printf("in INSERT:");
     buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
   }
 
-  // printf("\n");
+  printf("\n");
   // printf("   Insert key %ld success,now quit.\n", key.ToString());
   return result;
 }
@@ -443,17 +491,11 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::SetArrayNewParentPageId(std::pair<KeyType, page_id_t> *array, int low, int high,
                                              InternalPage *parent) {
-  // printf("setParent\n");
-  // std::cout<<"setParent"<<std::endl;
-  int index;
-  for (index = low; index <= high; index++) {
+  for (int index = low; index <= high; index++) {
     auto childpage = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(array[index].second));
-    // assert(childpage != nullptr);
-    // printf("%d(%d)  ", childpage->GetPageId(),array[index].second);
     childpage->SetParentPageId(parent->GetPageId());
     buffer_pool_manager_->UnpinPage(array[index].second, true);
   }
-  // printf("\n");
 }
 
 /*****************************************************************************
@@ -478,8 +520,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
   share_root_latch_.unlock();
-  // std::cout << "delete: rootid" << root_page_id_ << " key:" << key << std::endl;
-  printf("delete: rootid:%d key:%ld\n", root_page_id_, key.ToString());
+  std::cout << "delete: rootid" << root_page_id_ << " key:" << key << std::endl;
   auto target_leaf_page = WriteFindLeafPage(key, transaction, DELETE_FUNCTION);
   auto page_set = transaction->GetPageSet();
   bool pess_write = false;
@@ -488,8 +529,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     GetNeedUpdatePage(key, transaction, DELETE_FUNCTION);
     target_leaf_page = reinterpret_cast<BPlusTreePage *>(page_set->back());
   }
-  // buffer_pool_manager_->FetchPage(target_leaf_page->GetPageId());  //
-  // 需要多pin一次，因为进入deleteEntry函数会unpin一次
+  buffer_pool_manager_->FetchPage(target_leaf_page->GetPageId());  //  需要多pin一次，因为进入deleteEntry函数会unpin一次
   DeleteEntry(target_leaf_page, key, nullptr, transaction);
   auto delete_page_set = transaction->GetDeletedPageSet();
   // printf("REMOVE: now remove page from pageset:");
@@ -497,17 +537,20 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     auto page = reinterpret_cast<BPlusTreePage *>(page_set->back());
     page_set->pop_back();
     page->GetLatch().WUnlock();
-    buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+    // if (page->IsRootPage()) {
+    //   share_root_latch_.unlock();
+    // }
     if (delete_page_set->find(page->GetPageId()) != delete_page_set->end()) {
       buffer_pool_manager_->DeletePage(page->GetPageId());
       delete_page_set->erase(page->GetPageId());
     }
+    buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
   }
   if (!pess_write) {  //  乐观写不会引起deletepage或者合并
     target_leaf_page->GetLatch().WUnlock();
     buffer_pool_manager_->UnpinPage(target_leaf_page->GetPageId(), true);
   }
-  printf("remove key %ld finish.\n", key.ToString());
+  std::cout << "remove finish." << std::endl;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -520,27 +563,23 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
   }
   if (current_page->IsRootPage() && current_page->GetSize() == 1 &&
       !current_page->IsLeafPage()) {  // N为根节点且删除后只剩一个孩子节点(前提为非叶节点)
-    printf("the root page just has one child,(delete key %ld) now update root,old root is %d ", key.ToString(),
-           current_page->GetPageId());
     auto target_internal_page = reinterpret_cast<InternalPage *>(current_page);
-    // target_internal_page->Delete(value->GetPageId());
-    share_root_latch_.lock();
+    if (value != nullptr) {
+      target_internal_page->Delete(value->GetPageId());
+    }
     root_page_id_ =
         target_internal_page->ValueAt(0);  // 每次删除都是删除K和K的右侧指针,所以留下的总是左节点，即0号value
-    auto new_root_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_));
-    printf("new root is %d\n", new_root_page->GetPageId());
+    auto new_root_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(root_page_id_));
     new_root_page->SetParentPageId(-1);
     UpdateRootPageId();
-    // buffer_pool_manager_->UnpinPage(current_page->GetPageId(), false);
-    buffer_pool_manager_->UnpinPage(root_page_id_, true);  // 这里多fetch一次了那就需要多unpin一次
-    share_root_latch_.unlock();
+    buffer_pool_manager_->UnpinPage(current_page->GetPageId(), false);
+    buffer_pool_manager_->UnpinPage(root_page_id_, true);
     transaction->AddIntoDeletedPageSet(current_page->GetPageId());
     // buffer_pool_manager_->DeletePage(current_page->GetPageId());
-    // transaction->GetPageSet()->pop_front();  //  根节点肯定在最前
+    transaction->GetPageSet()->pop_front();  //  根节点肯定在最前
   } else if ((!current_page->IsRootPage() && current_page->IsLeafPage() && current_page->GetSize() < leaf_min_size_) ||
              (!current_page->IsRootPage() && !current_page->IsLeafPage() &&
               current_page->GetSize() < internal_min_size_)) {
-    printf("(key %ld) less than leafminsize.", key.ToString());
     // 或者节点中键值对少于minsize
     auto parent_internal_page =
         reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(current_page->GetParentPageId()));
@@ -556,7 +595,6 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
     transaction->AddIntoPageSet(reinterpret_cast<Page *>(checked_sibling_page));
     // 如果两个节点加起来的pair数量小于maxsize,需要合并， *****注意删除其中一页
     if (checked_sibling_page->GetSize() + current_page->GetSize() <= checked_sibling_page->GetMaxSize()) {
-      printf("(key %ld)need merge", key.ToString());
       if (checked_sibling_index == 1) {  // 节点(N)的兄弟(N')为右兄弟 （也就是N在N'前）,两指针交换
         // 这样做的目的是保持每次都只删除右指针,父节点删除指向右指针的键值对
         auto temp = checked_sibling_page;
@@ -581,11 +619,11 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
       }
       DeleteEntry(parent_internal_page, sibling[checked_sibling_index].first, current_page, transaction);
       transaction->AddIntoDeletedPageSet(current_page->GetPageId());
-      // buffer_pool_manager_->UnpinPage(current_page->GetPageId(),
-      // false);  // false是因为反正这一页是需要删除的，无需浪费时间更新
+      buffer_pool_manager_->UnpinPage(current_page->GetPageId(),
+                                      false);  // false是因为反正这一页是需要删除的，无需浪费时间更新
       // buffer_pool_manager_->DeletePage(current_page->GetPageId());
     } else {  //  兄弟的pair数量充足，从兄弟借一个pair即可，无需分裂
-      // std::cout << "兄弟节点充足,向兄弟借kv即可" << std::endl;
+      std::cout << "兄弟节点充足,向兄弟借kv即可" << std::endl;
       if (checked_sibling_index == 0) {  //  兄弟N‘为节点N的前一个节点 (向左兄弟借pair)，右借左
         if (!current_page->IsLeafPage()) {
           std::pair<KeyType, page_id_t> last_pair_in_sibling;
@@ -596,11 +634,10 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
           sibling_internal_page->Delete(last_pair_in_sibling.second);
           parent_internal_page->SwapKeyAtValue(last_pair_in_sibling.first, current_page->GetPageId());
           current_internal_page->InsertInFirst(last_pair_in_sibling.second, last_pair_in_sibling.first);
-          // printf("last_pair's value:%d\n",last_pair_in_sibling.second);
           reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(last_pair_in_sibling.second))
               ->SetParentPageId(current_internal_page->GetPageId());
           buffer_pool_manager_->UnpinPage(last_pair_in_sibling.second, true);
-          // std::cout << "发生了借兄弟(够借)" << last_pair_in_sibling.second << std::endl;
+          std::cout << "发生了借兄弟(够借)" << last_pair_in_sibling.second << std::endl;
         } else {
           MappingType last_pair_in_sibling;
           auto sibling_leaf_page = reinterpret_cast<LeafPage *>(checked_sibling_page);
@@ -614,39 +651,33 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
         }
       } else {  //  兄弟N'为右兄弟，左借右
         if (!current_page->IsLeafPage()) {
-          std::pair<KeyType, page_id_t> first_pair_in_sibling;
+          std::pair<KeyType, page_id_t> last_pair_in_sibling;
           auto sibling_internal_page = reinterpret_cast<InternalPage *>(checked_sibling_page);
           auto current_internal_page = reinterpret_cast<InternalPage *>(current_page);
-          first_pair_in_sibling.first = sibling_internal_page->KeyAt(1);
-          first_pair_in_sibling.second = sibling_internal_page->ValueAt(0);
-          sibling_internal_page->Delete(first_pair_in_sibling.second);
-          parent_internal_page->SwapKeyAtValue(first_pair_in_sibling.first, sibling[checked_sibling_index].second);
-          current_internal_page->InsertInInternal(first_pair_in_sibling.first, first_pair_in_sibling.second,
+          last_pair_in_sibling.first = sibling_internal_page->KeyAt(1);
+          last_pair_in_sibling.second = sibling_internal_page->ValueAt(0);
+          sibling_internal_page->Delete(last_pair_in_sibling.second);
+          parent_internal_page->SwapKeyAtValue(last_pair_in_sibling.first, sibling[checked_sibling_index].second);
+          current_internal_page->InsertInInternal(last_pair_in_sibling.first, last_pair_in_sibling.second,
                                                   comparator_);  // 插到最后
-          // printf("first_pair's value:%d\n",first_pair_in_sibling.second);
-          reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(first_pair_in_sibling.second))
-              ->SetParentPageId(current_internal_page->GetPageId());
-          buffer_pool_manager_->UnpinPage(first_pair_in_sibling.second, true);
-
         } else {
-          MappingType first_pair_in_sibling;
+          MappingType last_pair_in_sibling;
           auto sibling_leaf_page = reinterpret_cast<LeafPage *>(checked_sibling_page);
           auto current_leaf_page = reinterpret_cast<LeafPage *>(current_page);
-          first_pair_in_sibling.first = sibling_leaf_page->KeyAt(0);
-          first_pair_in_sibling.second = sibling_leaf_page->ValueAt(0);
-          current_leaf_page->InsertInLeaf(first_pair_in_sibling.first, first_pair_in_sibling.second, comparator_);  //
-          sibling_leaf_page->Delete(first_pair_in_sibling.first, comparator_);
-          parent_internal_page->SwapKeyAtValue(first_pair_in_sibling.first, sibling[checked_sibling_index].second);
+          last_pair_in_sibling.first = sibling_leaf_page->KeyAt(0);
+          last_pair_in_sibling.second = sibling_leaf_page->ValueAt(0);
+          current_leaf_page->InsertInLeaf(last_pair_in_sibling.first, last_pair_in_sibling.second, comparator_);  //
+          sibling_leaf_page->Delete(last_pair_in_sibling.first, comparator_);
+          parent_internal_page->SwapKeyAtValue(last_pair_in_sibling.first, sibling[checked_sibling_index].second);
         }
       }
-
+      buffer_pool_manager_->UnpinPage(current_page->GetPageId(), true);
       // std::cout << "兄弟充足，向兄弟借kv完成" << std::endl;
     }
 
     buffer_pool_manager_->UnpinPage(parent_internal_page->GetPageId(), true);
-    // buffer_pool_manager_->UnpinPage(sibling[checked_sibling_index].second, true);
+    buffer_pool_manager_->UnpinPage(sibling[checked_sibling_index].second, true);
   }
-  // buffer_pool_manager_->UnpinPage(current_page->GetPageId(), true);
 }
 /*****************************************************************************
  * INDEX ITERATOR

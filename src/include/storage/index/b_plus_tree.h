@@ -46,15 +46,16 @@ class BPlusTree {
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
-  void GetNeedUpdatePage(page_id_t root, const KeyType &key, Transaction *transaction, int call_fun);
+  void GetNeedUpdatePage(const KeyType &key, Transaction *transaction, int call_fun);
   auto FindLeafPage(const KeyType &key) -> LeafPage *;
+  auto WriteFindLeafPage(const KeyType &key, Transaction *transaction, int call_fun) -> BPlusTreePage *;
   void InsertInternalArrayHelper(std::pair<KeyType, page_id_t> *array, int array_size, const KeyType &key,
                                  page_id_t value);
   void InsertLeafArrayHelper(MappingType *array, int array_size, const KeyType &key, const ValueType &value);
   // void SetNewParentPageId(std::pair<KeyType, page_id_t> *array, int array_size, BPlusTreePage *child,
   //                         InternalPage *left_parent, InternalPage *right_parent);
   void SetArrayNewParentPageId(std::pair<KeyType, page_id_t> *array, int low, int high, InternalPage *parent);
-  void InsertInParent(BPlusTreePage *left, const KeyType &key, BPlusTreePage *right);
+  void InsertInParent(BPlusTreePage *left, const KeyType &key, BPlusTreePage *right, Transaction *transaction);
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
   auto InsertHelper(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool;
@@ -86,6 +87,8 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
+  // template<typename ... LogArgs>
+  // void LogDebug(LogArgs... logAugs);
  private:
   void UpdateRootPageId(int insert_record = 0);
 
@@ -103,12 +106,13 @@ class BPlusTree {
   int internal_max_size_;
   int leaf_min_size_;
   int internal_min_size_;
-  std::shared_mutex share_latch_;
   /*
    * 用于获取根节点时的锁，如果两个插入操作获取了同一根节点页，然后第一个插入操作获取该页的锁后阻塞了第二个线程的插入，同时又发生了分裂生成新根，
    * 此时根节点更新，但是第二个线程会误以为根节点页依旧没变，仍从所在节点开始进行插入。
    */
   std::shared_mutex share_root_latch_;
+  // std::mutex log_lock_;
+  // bool debug_flag_;
 };
 
 }  // namespace bustub

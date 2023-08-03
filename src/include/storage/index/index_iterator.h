@@ -13,6 +13,7 @@
  * For range scan of b+ tree
  */
 #pragma once
+#include "common/config.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
 namespace bustub {
 #define INDEXITERATOR_TYPE IndexIterator<KeyType, ValueType, KeyComparator>
@@ -34,23 +35,17 @@ class IndexIterator {
   auto operator++() -> IndexIterator &;
 
   auto operator==(const IndexIterator &itr) const -> bool {
-    return index_in_current_page_ == itr.index_in_current_page_ && current_leaf_node_ == itr.current_leaf_node_;
+    return index_in_current_page_ == itr.index_in_current_page_ && current_leaf_page_ == itr.current_leaf_page_;
   };
 
   auto operator!=(const IndexIterator &itr) const -> bool {
-    return index_in_current_page_ != itr.index_in_current_page_ || current_leaf_node_ != itr.current_leaf_node_;
+    return index_in_current_page_ != itr.index_in_current_page_ || current_leaf_page_ != itr.current_leaf_page_;
   }
-  struct LeafNode {
-    LeafNode *next_node_;
-    LeafPage *page_;
-    explicit LeafNode(LeafPage *page) : page_(page) {}
-  };
 
  private:
   KeyComparator comparator_;
   BufferPoolManager *buffer_pool_manager_;
-  LeafNode *head_, *tail_;
-  LeafNode *current_leaf_node_;
+  LeafPage *current_leaf_page_;
   int index_in_current_page_;
 
   // add your own private member variables here
