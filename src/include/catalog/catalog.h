@@ -160,6 +160,7 @@ class Catalog {
    * @return A (non-owning) pointer to the metadata for the table
    */
   auto GetTable(const std::string &table_name) const -> TableInfo * {
+    //  名字到oid的映射，双向映射这样方便用表名字来找表
     auto table_oid = table_names_.find(table_name);
     if (table_oid == table_names_.end()) {
       // Table not found
@@ -318,7 +319,7 @@ class Catalog {
     if (table_names_.find(table_name) == table_names_.end()) {
       return std::vector<IndexInfo *>{};
     }
-
+    //  index_names是table_name-> （index_name，map<index_name,index_id>)
     auto table_indexes = index_names_.find(table_name);
     BUSTUB_ASSERT((table_indexes != index_names_.end()), "Broken Invariant");
 

@@ -45,8 +45,8 @@ auto TableIterator::operator++() -> TableIterator & {
   cur_page->RLatch();
   RID next_tuple_rid;
   if (!cur_page->GetNextTupleRid(tuple_->rid_,
-                                 &next_tuple_rid)) {  // end of this page
-    while (cur_page->GetNextPageId() != INVALID_PAGE_ID) {
+                                 &next_tuple_rid)) {        // end of this page
+    while (cur_page->GetNextPageId() != INVALID_PAGE_ID) {  //  while是因为有些页可能元祖都被删除了
       auto next_page = static_cast<TablePage *>(buffer_pool_manager->FetchPage(cur_page->GetNextPageId()));
       cur_page->RUnlatch();
       buffer_pool_manager->UnpinPage(cur_page->GetTablePageId(), false);
@@ -59,6 +59,7 @@ auto TableIterator::operator++() -> TableIterator & {
   }
   tuple_->rid_ = next_tuple_rid;
 
+  //  未到达表最后一页就出现读不到tuple的情况，则抛出异常
   if (*this != table_heap_->End()) {
     // DO NOT ACQUIRE READ LOCK twice in a single thread otherwise it may deadlock.
     // See https://users.rust-lang.org/t/how-bad-is-the-potential-deadlock-mentioned-in-rwlocks-document/67234

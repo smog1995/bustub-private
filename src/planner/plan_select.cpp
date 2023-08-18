@@ -40,6 +40,8 @@ auto Planner::PlanSelect(const SelectStatement &statement) -> AbstractPlanNodeRe
 
   AbstractPlanNodeRef plan = nullptr;
 
+  // 首先判断选择声明的表引用是否为空
+
   switch (statement.table_->type_) {
     case TableReferenceType::EMPTY:
       plan = std::make_shared<ValuesPlanNode>(
@@ -50,13 +52,13 @@ auto Planner::PlanSelect(const SelectStatement &statement) -> AbstractPlanNodeRe
       plan = PlanTableRef(*statement.table_);
       break;
   }
-
+  // 状态是否有where语句
   if (!statement.where_->IsInvalid()) {
     auto schema = plan->OutputSchema();
     auto [_, expr] = PlanExpression(*statement.where_, {plan});
     plan = std::make_shared<FilterPlanNode>(std::make_shared<Schema>(schema), std::move(expr), std::move(plan));
   }
-
+  //  再判断是否有聚集条件
   bool has_agg = false;
   for (const auto &item : statement.select_list_) {
     if (item->HasAggregation()) {

@@ -33,8 +33,10 @@ class SeqScanExecutor : public AbstractExecutor {
    */
   SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan);
 
+  ~SeqScanExecutor() override;
+
   /** Initialize the sequential scan */
-  void Init() override;
+  // void Init() override;
 
   /**
    * Yield the next tuple from the sequential scan.
@@ -50,5 +52,6 @@ class SeqScanExecutor : public AbstractExecutor {
  private:
   /** The sequential scan plan node to be executed */
   const SeqScanPlanNode *plan_;
+  TableIterator *table_iterator_;
 };
 }  // namespace bustub
