@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include "catalog/schema.h"
 #include "common/rid.h"
 #include "execution/executors/insert_executor.h"
 #include "storage/table/tuple.h"
@@ -27,37 +28,33 @@ InsertExecutor::InsertExecutor(
   Column column("affect row num", TINYINT);
   std::vector<Column> values(1);
   values[0] = column;
-  integer_schema_ = new Schema(values);
+  integer_schema_ = std::make_unique<Schema>(Schema(values));
 }
 
-InsertExecutor::~InsertExecutor() {
-  child_executor_ = nullptr;
-  delete integer_schema_;
-}
 void InsertExecutor::Init() {}
 //  需要使用catalog来创建index等，
 
 auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
-  Tuple *child_tuple = nullptr;
-  RID *child_rid = nullptr;
+  Tuple child_tuple;
+  RID child_rid;
   std::vector<Value> values(1);
-  bool child_res = child_executor_->Next(child_tuple, child_rid);
+  bool child_res = child_executor_->Next(&child_tuple, &child_rid);
   if (!child_res) {
     Value row_affect_num(TINYINT, 0);
     values[0] = row_affect_num;
-    tuple = new Tuple(values, integer_schema_);
+    tuple = new Tuple(values, integer_schema_.get());
     return false;
   }
 
-  table_info_->table_->InsertTuple(*child_tuple, child_rid, exec_ctx_->GetTransaction());
+  table_info_->table_->InsertTuple(child_tuple, &child_rid, exec_ctx_->GetTransaction());
   auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
   if (!table_indexes_info.empty()) {
     for (auto &index_info : table_indexes_info) {
-      index_info->index_->InsertEntry(*child_tuple, *child_rid, exec_ctx_->GetTransaction());
+      index_info->index_->InsertEntry(child_tuple, child_rid, exec_ctx_->GetTransaction());
     }
   }
   Value row_affect_num(TINYINT, 1);
-  tuple = new Tuple(values, integer_schema_);
+  tuple = new Tuple(values, integer_schema_.get());
   return true;
 }
 

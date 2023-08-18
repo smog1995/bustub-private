@@ -37,7 +37,6 @@ class InsertExecutor : public AbstractExecutor {
   InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
                  std::unique_ptr<AbstractExecutor> &&child_executor);
 
-  ~InsertExecutor();
   /** Initialize the insert */
   void Init() override;
 
@@ -57,11 +56,11 @@ class InsertExecutor : public AbstractExecutor {
 
  private:
   /** The insert plan node to be executed*/
-  const InsertPlanNode *plan_ = nullptr;
-  TableInfo *table_info_ = nullptr;
+  const InsertPlanNode *plan_;
+  TableInfo *table_info_;
   // std::unique_ptr<AbstractExecutor> child_executor_;
   std::unique_ptr<AbstractExecutor> child_executor_;
-  Schema *integer_schema_ = nullptr;
+  std::unique_ptr<Schema> integer_schema_;
 };
 
 }  // namespace bustub

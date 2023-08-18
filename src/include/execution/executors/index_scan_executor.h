@@ -46,6 +46,6 @@ class IndexScanExecutor : public AbstractExecutor {
   /** The index scan plan node to be executed. */
   const IndexScanPlanNode *plan_;
   std::unique_ptr<IndexIterator<IntegerKeyType, IntegerValueType, IntegerComparatorType>> index_iterator_;
-  
+  TableInfo *table_info_;
 };
 }  // namespace bustub
