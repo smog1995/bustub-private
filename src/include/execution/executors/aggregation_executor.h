@@ -46,7 +46,8 @@ class SimpleAggregationHashTable {
   //  要知道一条select中可能不止使用一个聚合函数
   auto GenerateInitialAggregateValue() -> AggregateValue {
     std::vector<Value> values{};
-    for (const auto &agg_type : agg_types_) {
+    for (const auto &agg_type : agg_types_) {  
+      //  聚集时，只会对聚集函数括号中的属性列做计算，所以我们只需保存该属性列的值然后做计算
       switch (agg_type) {
         case AggregationType::CountStarAggregate:
           // Count start starts at zero.
@@ -76,11 +77,40 @@ class SimpleAggregationHashTable {
       switch (agg_types_[i]) {
         //  不会跳过null的count
         case AggregationType::CountStarAggregate:
+          result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));  //  每次都+1
+          break;
         //  会跳过null
         case AggregationType::CountAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
+          }
+          break;
         case AggregationType::SumAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i].Add(input.aggregates_[i]);
+          }
+          break;
         case AggregationType::MinAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            if(result->aggregates_[i].IsNull()) {
+              result->aggregates_[i] = input.aggregates_[i];
+            } else {
+              if(result->aggregates_[i].CompareGreaterThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
+                result->aggregates_[i] = input.aggregates_[i];
+              }
+            }
+          }
+          break;
         case AggregationType::MaxAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            if(result->aggregates_[i].IsNull()) {
+              result->aggregates_[i] = input.aggregates_[i];
+            } else {
+              if(result->aggregates_[i].CompareLessThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
+                result->aggregates_[i] = input.aggregates_[i];
+              }
+            }
+          }
           break;
       }
     }
@@ -145,6 +175,7 @@ class SimpleAggregationHashTable {
   /** The aggregate expressions that we have */
   const std::vector<AbstractExpressionRef> &agg_exprs_;
   /** The types of aggregations that we have */
+  //  保存了需要做聚合的函数
   const std::vector<AggregationType> &agg_types_;
 };
 
@@ -184,7 +215,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** @return The tuple as an AggregateKey */
   auto MakeAggregateKey(const Tuple *tuple) -> AggregateKey {
     std::vector<Value> keys;
-    for (const auto &expr : plan_->GetGroupBys()) {
+    for (const auto &expr : plan_->GetGroupBys()) { //  group by哪些属性
       keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
     }
     return {keys};
@@ -193,7 +224,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** @return The tuple as an AggregateValue */
   auto MakeAggregateValue(const Tuple *tuple) -> AggregateValue {
     std::vector<Value> vals;
-    for (const auto &expr : plan_->GetAggregates()) {
+    for (const auto &expr : plan_->GetAggregates()) { //  聚集函数所需要计算的属性
       vals.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
     }
     return {vals};
@@ -205,8 +236,8 @@ class AggregationExecutor : public AbstractExecutor {
   /** The child executor that produces tuples over which the aggregation is computed */
   std::unique_ptr<AbstractExecutor> child_;
   /** Simple aggregation hash table */
-  // TODO(Student): Uncomment SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator */
-  // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
+  SimpleAggregationHashTable::Iterator aht_iterator_;
 };
 }  // namespace bustub
