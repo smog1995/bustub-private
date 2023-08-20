@@ -24,6 +24,8 @@
 #include "execution/expressions/abstract_expression.h"
 #include "execution/plans/aggregation_plan.h"
 #include "storage/table/tuple.h"
+#include "type/type.h"
+#include "type/type_id.h"
 #include "type/value_factory.h"
 
 namespace bustub {
@@ -77,17 +79,24 @@ class SimpleAggregationHashTable {
       switch (agg_types_[i]) {
         //  不会跳过null的count
         case AggregationType::CountStarAggregate:
-          result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));  //  每次都+1
+          result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));  //  每次都+1
+          std::cout<<result->aggregates_[i].ToString()<<" ";
           break;
         //  会跳过null
         case AggregationType::CountAggregate:
           if (!input.aggregates_[i].IsNull()) {
-            result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
+            if (result->aggregates_[i].IsNull()) {
+              result->aggregates_[i] = ValueFactory::GetIntegerValue(0);
+            }
+            result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
           }
           break;
         case AggregationType::SumAggregate:
           if (!input.aggregates_[i].IsNull()) {
-            result->aggregates_[i].Add(input.aggregates_[i]);
+            if (result->aggregates_[i].IsNull()) {
+              result->aggregates_[i] = ValueFactory::GetIntegerValue(0);
+            }
+            result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
           }
           break;
         case AggregationType::MinAggregate:
@@ -239,5 +248,6 @@ class AggregationExecutor : public AbstractExecutor {
   SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator */
   SimpleAggregationHashTable::Iterator aht_iterator_;
+  bool execute_flag_ = false;  //  是否执行过next
 };
 }  // namespace bustub

@@ -656,6 +656,10 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   //不上锁也没关系，这个函数不要求实现并发
   page_id_t target_page_id= root_page_id_;
+  if (root_page_id_ == INVALID_PAGE_ID) {
+    IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(comparator_);
+    return index_iterator;
+  }
   auto begin_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(target_page_id));
   while(!begin_page->IsLeafPage()) {
     auto child_page_id = reinterpret_cast<InternalPage*>(begin_page)->ValueAt(0);
@@ -664,6 +668,10 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
     target_page_id = child_page_id;
   }
   auto begin_leaf_page = reinterpret_cast<LeafPage*>(begin_page);
+  if (begin_leaf_page->GetSize() == 0) {
+    IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(comparator_);
+    return index_iterator;
+  }
   IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_,
                                                                   begin_leaf_page->KeyAt(0));
   buffer_pool_manager_->UnpinPage(begin_page->GetPageId(), false);

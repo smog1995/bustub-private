@@ -81,7 +81,6 @@ auto IntegerParentType::AddValue(const Value &left, const Value &right) const ->
   auto y = right.GetAs<T2>();
   auto sum1 = static_cast<T1>(x + y);
   auto sum2 = static_cast<T2>(x + y);
-
   if ((x + y) != sum1 && (x + y) != sum2) {
     throw Exception(ExceptionType::OUT_OF_RANGE, "Numeric value out of range.");
   }
