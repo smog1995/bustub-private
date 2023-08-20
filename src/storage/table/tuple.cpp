@@ -116,7 +116,7 @@ auto Tuple::KeyFromTuple(const Schema &schema, const Schema &key_schema, const s
 
 auto Tuple::GetDataPtr(const Schema *schema, const uint32_t column_idx) const -> const char * {
   assert(schema);
-  assert(data_);
+  // assert(data_);
   const auto &col = schema->GetColumn(column_idx);
   bool is_inlined = col.IsInlined();
   // For inline type, data is stored where it is.

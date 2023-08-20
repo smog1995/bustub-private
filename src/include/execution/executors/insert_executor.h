@@ -50,7 +50,7 @@ class InsertExecutor : public AbstractExecutor {
    * NOTE: InsertExecutor::Next() returns true with number of inserted rows produced only once.
    */
   auto Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool override;
-
+  auto NextHelper() -> int;
   /** @return The output schema for the insert */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
@@ -60,7 +60,7 @@ class InsertExecutor : public AbstractExecutor {
   TableInfo *table_info_;
   // std::unique_ptr<AbstractExecutor> child_executor_;
   std::unique_ptr<AbstractExecutor> child_executor_;
-  std::unique_ptr<Schema> integer_schema_;
+  bool execute_finish_flag_ = false;
 };
 
 }  // namespace bustub

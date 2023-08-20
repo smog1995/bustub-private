@@ -121,7 +121,7 @@ struct AggregateValue {
 }  // namespace bustub
 
 namespace std {
-
+//  该函数用于实现group by中的所有列属性（key）做哈希，返回哈希值（作用是）
 /** Implements std::hash on AggregateKey */
 template <>
 struct hash<bustub::AggregateKey> {

@@ -42,7 +42,7 @@ auto TablePage::InsertTuple(const Tuple &tuple, RID *rid, Transaction *txn, Lock
   if (GetFreeSpaceRemaining() < tuple.size_ + SIZE_TUPLE) {
     return false;
   }
-
+  // std::cout<<"insertTuple in tablepage:";
   // Try to find a free slot to reuse.
   uint32_t i;
   for (i = 0; i < GetTupleCount(); i++) {
@@ -57,6 +57,7 @@ auto TablePage::InsertTuple(const Tuple &tuple, RID *rid, Transaction *txn, Lock
   if (i == GetTupleCount() && GetFreeSpaceRemaining() < tuple.size_ + SIZE_TUPLE) {
     return false;
   }
+  // std::cout<<"i:"<<i<<std::endl;
 
   // Otherwise we claim available free space..
   SetFreeSpacePointer(GetFreeSpacePointer() - tuple.size_);

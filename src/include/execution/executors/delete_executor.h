@@ -54,7 +54,7 @@ class DeleteExecutor : public AbstractExecutor {
 
   /** @return The output schema for the delete */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
-
+  auto NextHelper() -> int;
  private:
   /** The delete plan node to be executed */
   const DeletePlanNode *plan_;
@@ -63,5 +63,6 @@ class DeleteExecutor : public AbstractExecutor {
   // std::unique_ptr<AbstractExecutor> child_executor_;
   std::unique_ptr<AbstractExecutor> child_executor_;
   std::unique_ptr<Schema> integer_schema_;
+  bool execute_finish_flag_ = false;
 };
 }  // namespace bustub

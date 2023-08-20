@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include "common/rid.h"
 #include "execution/executors/insert_executor.h"
 #include "storage/table/tuple.h"
+#include "type/type_id.h"
 
 namespace bustub {
 
@@ -25,37 +27,49 @@ InsertExecutor::InsertExecutor(
     std::unique_ptr<AbstractExecutor> &&child_executor)  //  注意这里并不是万能引用（只有用模板才是），这是右值引用
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->table_oid_);
-  Column column("affect row num", TINYINT);
-  std::vector<Column> values(1);
-  values[0] = column;
-  integer_schema_ = std::make_unique<Schema>(Schema(values));
 }
 
 void InsertExecutor::Init() {}
 //  需要使用catalog来创建index等，
 
 auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
-  Tuple child_tuple;
-  RID child_rid;
-  std::vector<Value> values(1);
-  bool child_res = child_executor_->Next(&child_tuple, &child_rid);
-  if (!child_res) {
-    Value row_affect_num(TINYINT, 0);
-    values[0] = row_affect_num;
-    tuple = new Tuple(values, integer_schema_.get());
+  if (execute_finish_flag_) {
     return false;
   }
-
-  table_info_->table_->InsertTuple(child_tuple, &child_rid, exec_ctx_->GetTransaction());
-  auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
-  if (!table_indexes_info.empty()) {
-    for (auto &index_info : table_indexes_info) {
-      index_info->index_->InsertEntry(child_tuple, child_rid, exec_ctx_->GetTransaction());
-    }
-  }
-  Value row_affect_num(TINYINT, 1);
-  tuple = new Tuple(values, integer_schema_.get());
+  std::vector<Value> values;
+  Tuple *res_tuple;
+  int insert_row = NextHelper(); //  一次性插入子执行器的所有元祖（一条insert中可能插入多条元祖）
+  Value row_affect_num(INTEGER, insert_row);
+  values.emplace_back(row_affect_num);
+  std::cout<<"res_tuple";
+  res_tuple = new Tuple(values, &GetOutputSchema());
+  *tuple = *res_tuple;
+  delete res_tuple;
+  execute_finish_flag_ = true;
   return true;
 }
 
+auto InsertExecutor::NextHelper() -> int {
+  Tuple child_tuple;
+  RID child_rid;
+  int insert_row = 0;
+  bool child_res = child_executor_->Next(&child_tuple, &child_rid);
+  while (child_res) {
+    insert_row++;
+    // std::cout<<"child_tuple:"<<child_tuple.ToString(&child_executor_->GetOutputSchema())<<std::endl;
+    table_info_->table_->InsertTuple(child_tuple, &child_rid, exec_ctx_->GetTransaction());
+    
+    auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+    if (!table_indexes_info.empty()) {
+      for (auto &index_info : table_indexes_info) {
+        // std::cout<<"index_info"<<index_info->index_oid_<<std::endl;
+        index_info->index_->InsertEntry(child_tuple.KeyFromTuple(child_executor_->GetOutputSchema(), index_info->key_schema_, index_info->index_->GetKeyAttrs()), child_rid, exec_ctx_->GetTransaction());
+        // index_info->index_->InsertEntry(child_tuple, , exec_ctx_->GetTransaction());
+      }
+    }
+    child_res = child_executor_->Next(&child_tuple, &child_rid);
+    // std::cout<<child_res;
+  }
+  return insert_row;
+}
 }  // namespace bustub

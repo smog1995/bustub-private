@@ -405,7 +405,6 @@ auto BPLUSTREE_TYPE::InsertHelper(const KeyType &key, const ValueType &value, Tr
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
-  // printf("INSERT %ld.", key.ToString());
   share_root_latch_.lock();
   if (IsEmpty()) {
     auto new_root = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&root_page_id_));
@@ -432,7 +431,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   }
 
   // printf("\n");
-  // printf("   Insert key %ld success,now quit.\n", key.ToString());
+  // printf("   Insert key success,now quit.\n");
   return result;
 }
 
@@ -655,12 +654,19 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
-  KeyType key;
-  key.SetFromInteger(-1);
-  auto begin_leaf_page = FindLeafPage(key);
+  //不上锁也没关系，这个函数不要求实现并发
+  page_id_t target_page_id= root_page_id_;
+  auto begin_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(target_page_id));
+  while(!begin_page->IsLeafPage()) {
+    auto child_page_id = reinterpret_cast<InternalPage*>(begin_page)->ValueAt(0);
+    begin_page = reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(child_page_id));
+    buffer_pool_manager_->UnpinPage(target_page_id, false);
+    target_page_id = child_page_id;
+  }
+  auto begin_leaf_page = reinterpret_cast<LeafPage*>(begin_page);
   IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_,
-                                                                  key);
-  buffer_pool_manager_->UnpinPage(begin_leaf_page->GetPageId(), false);
+                                                                  begin_leaf_page->KeyAt(0));
+  buffer_pool_manager_->UnpinPage(begin_page->GetPageId(), false);
   return index_iterator;
 }
 
@@ -672,8 +678,10 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
   auto begin_leaf_page = FindLeafPage(key);
+  begin_leaf_page->GetLatch().WUnlock();
   IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(begin_leaf_page, comparator_, buffer_pool_manager_,
                                                                   key);
+  
   buffer_pool_manager_->UnpinPage(begin_leaf_page->GetPageId(), false);
   return index_iterator;
 }
