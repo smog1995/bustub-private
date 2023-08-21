@@ -28,7 +28,6 @@ void BPLUSTREE_INDEX_TYPE::InsertEntry(const Tuple &key, RID rid, Transaction *t
   index_key.SetFromKey(key);
   // std::cout<<"insert success"<<std::endl;
   container_.Insert(index_key, rid, transaction);
-  
 }
 
 INDEX_TEMPLATE_ARGUMENTS

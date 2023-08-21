@@ -88,7 +88,7 @@ class ExecutionEngine {
                            std::vector<Tuple> *result_set) {
     RID rid{};
     Tuple tuple{};
-    std::cout<<"pollExcutor's while:"<<std::endl;
+    std::cout << "pollExcutor's while:" << std::endl;
     while (executor->Next(&tuple, &rid)) {
       // std::cout<<"tuple:"<<tuple.ToString(&plan->OutputSchema())<<std::endl;
       if (result_set != nullptr) {

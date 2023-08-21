@@ -22,10 +22,14 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
   // catalog->CreateTable(exec_ctx_->GetTransaction(), plan_->table_name_, GetOutputSchema());
   // 实际上不需要创建表，只是执行查询操作 GetTable 获取到TableInfo类，该类的tables_成员变量是TableHeap的智能指针，
   // 再用begin函数进行构造Iterator
-  table_iterator_ = std::make_unique<TableIterator>(TableIterator(table_info_->table_->Begin(exec_ctx_->GetTransaction())));
+  table_iterator_ =
+      std::make_unique<TableIterator>(TableIterator(table_info_->table_->Begin(exec_ctx_->GetTransaction())));
 }
 
-void SeqScanExecutor::Init() {}
+void SeqScanExecutor::Init() {
+  table_iterator_ =
+      std::make_unique<TableIterator>(TableIterator(table_info_->table_->Begin(exec_ctx_->GetTransaction())));
+}
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (*table_iterator_ == table_info_->table_->End()) {

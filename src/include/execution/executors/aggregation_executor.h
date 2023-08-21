@@ -48,7 +48,7 @@ class SimpleAggregationHashTable {
   //  要知道一条select中可能不止使用一个聚合函数
   auto GenerateInitialAggregateValue() -> AggregateValue {
     std::vector<Value> values{};
-    for (const auto &agg_type : agg_types_) {  
+    for (const auto &agg_type : agg_types_) {
       //  聚集时，只会对聚集函数括号中的属性列做计算，所以我们只需保存该属性列的值然后做计算
       switch (agg_type) {
         case AggregationType::CountStarAggregate:
@@ -80,7 +80,6 @@ class SimpleAggregationHashTable {
         //  不会跳过null的count
         case AggregationType::CountStarAggregate:
           result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));  //  每次都+1
-          std::cout<<result->aggregates_[i].ToString()<<" ";
           break;
         //  会跳过null
         case AggregationType::CountAggregate:
@@ -101,10 +100,10 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::MinAggregate:
           if (!input.aggregates_[i].IsNull()) {
-            if(result->aggregates_[i].IsNull()) {
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = input.aggregates_[i];
             } else {
-              if(result->aggregates_[i].CompareGreaterThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
+              if (result->aggregates_[i].CompareGreaterThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
                 result->aggregates_[i] = input.aggregates_[i];
               }
             }
@@ -112,10 +111,10 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::MaxAggregate:
           if (!input.aggregates_[i].IsNull()) {
-            if(result->aggregates_[i].IsNull()) {
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = input.aggregates_[i];
             } else {
-              if(result->aggregates_[i].CompareLessThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
+              if (result->aggregates_[i].CompareLessThan(input.aggregates_[i]) == CmpBool::CmpTrue) {
                 result->aggregates_[i] = input.aggregates_[i];
               }
             }
@@ -224,7 +223,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** @return The tuple as an AggregateKey */
   auto MakeAggregateKey(const Tuple *tuple) -> AggregateKey {
     std::vector<Value> keys;
-    for (const auto &expr : plan_->GetGroupBys()) { //  group by哪些属性
+    for (const auto &expr : plan_->GetGroupBys()) {  //  group by哪些属性
       keys.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
     }
     return {keys};
@@ -233,7 +232,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** @return The tuple as an AggregateValue */
   auto MakeAggregateValue(const Tuple *tuple) -> AggregateValue {
     std::vector<Value> vals;
-    for (const auto &expr : plan_->GetAggregates()) { //  聚集函数所需要计算的属性
+    for (const auto &expr : plan_->GetAggregates()) {  //  聚集函数所需要计算的属性
       vals.emplace_back(expr->Evaluate(tuple, child_->GetOutputSchema()));
     }
     return {vals};

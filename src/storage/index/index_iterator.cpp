@@ -41,15 +41,14 @@ auto INDEXITERATOR_TYPE::IsEnd() -> bool { return current_leaf_page_ == nullptr 
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
-  std::cout<<"rid为:"<<current_leaf_page_->array_[index_in_current_page_].second.ToString();
+  std::cout << "rid为:" << current_leaf_page_->array_[index_in_current_page_].second.ToString();
   return current_leaf_page_->array_[index_in_current_page_];
-
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   index_in_current_page_++;
-  std::cout<<"btree_iterator index:"<<index_in_current_page_<<std::endl;
+  std::cout << "btree_iterator index:" << index_in_current_page_ << std::endl;
   if (index_in_current_page_ >= current_leaf_page_->GetSize()) {
     page_id_t next_page_id = current_leaf_page_->GetNextPageId();
     // current_leaf_page_->GetLatch().RUnlock();

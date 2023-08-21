@@ -34,7 +34,6 @@ class SeqScanExecutor : public AbstractExecutor {
    */
   SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan);
 
-
   /** Initialize the sequential scan */
   void Init() override;
 
@@ -53,7 +52,7 @@ class SeqScanExecutor : public AbstractExecutor {
   /** The sequential scan plan node to be executed */
   const SeqScanPlanNode *plan_;
   // TableIterator *table_iterator_;
-  TableInfo* table_info_;
+  TableInfo *table_info_;
   std::unique_ptr<TableIterator> table_iterator_;
 };
 }  // namespace bustub

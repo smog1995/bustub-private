@@ -35,7 +35,7 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   *rid = pair.second;
   ++*index_iterator_;
   table_info_->table_->GetTuple(*rid, tuple, exec_ctx_->GetTransaction());
-  std::cout<<tuple->ToString(&table_info_->schema_)<<std::endl;
+  std::cout << tuple->ToString(&table_info_->schema_) << std::endl;
   return true;
 }
 

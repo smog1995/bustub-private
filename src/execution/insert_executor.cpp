@@ -37,14 +37,13 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     return false;
   }
   std::vector<Value> values;
-  Tuple *res_tuple;
-  int insert_row = NextHelper(); //  一次性插入子执行器的所有元祖（一条insert中可能插入多条元祖）
+
+  int insert_row = NextHelper();  //  一次性插入子执行器的所有元祖（一条insert中可能插入多条元祖）
   Value row_affect_num(INTEGER, insert_row);
   values.emplace_back(row_affect_num);
-  std::cout<<"res_tuple";
-  res_tuple = new Tuple(values, &GetOutputSchema());
-  *tuple = *res_tuple;
-  delete res_tuple;
+  // std::cout<<"res_tuple";
+  Tuple res_tuple(values, &GetOutputSchema());
+  *tuple = res_tuple;
   execute_finish_flag_ = true;
   return true;
 }
@@ -58,12 +57,15 @@ auto InsertExecutor::NextHelper() -> int {
     insert_row++;
     // std::cout<<"child_tuple:"<<child_tuple.ToString(&child_executor_->GetOutputSchema())<<std::endl;
     table_info_->table_->InsertTuple(child_tuple, &child_rid, exec_ctx_->GetTransaction());
-    
+
     auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
     if (!table_indexes_info.empty()) {
       for (auto &index_info : table_indexes_info) {
         // std::cout<<"index_info"<<index_info->index_oid_<<std::endl;
-        index_info->index_->InsertEntry(child_tuple.KeyFromTuple(child_executor_->GetOutputSchema(), index_info->key_schema_, index_info->index_->GetKeyAttrs()), child_rid, exec_ctx_->GetTransaction());
+        index_info->index_->InsertEntry(
+            child_tuple.KeyFromTuple(child_executor_->GetOutputSchema(), index_info->key_schema_,
+                                     index_info->index_->GetKeyAttrs()),
+            child_rid, exec_ctx_->GetTransaction());
         // index_info->index_->InsertEntry(child_tuple, , exec_ctx_->GetTransaction());
       }
     }
