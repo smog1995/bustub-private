@@ -21,15 +21,16 @@
 #include "storage/table/tuple.h"
 
 namespace bustub {
-/**
+/**  
+ *   属性列表达式会保存一个计划中该属性列位于第几列，同时，如果是连接，还会保存该属性列属于左表还是右表
  * ColumnValueExpression maintains the tuple index and column index relative to a particular schema or join.
  */
 class ColumnValueExpression : public AbstractExpression {
  public:
   /**
    * ColumnValueExpression is an abstraction around "Table.member" in terms of indexes.
-   * @param tuple_idx {tuple index 0 = left side of join, tuple index 1 = right side of join}
-   * @param col_idx the index of the column in the schema
+   * @param tuple_idx {tuple index 0 = left side of join, tuple index 1 = right side of join}   
+   * @param col_idx the index of the column in the schema    如聚集执行器中的schema会有输出元组的属性列，而每一个属性列expression需要保存它在输出元组属性第几列
    * @param ret_type the return type of the expression
    */
   ColumnValueExpression(uint32_t tuple_idx, uint32_t col_idx, TypeId ret_type)

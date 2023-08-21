@@ -50,11 +50,11 @@ class AbstractExpression {
 
   /** Virtual destructor. */
   virtual ~AbstractExpression() = default;
-  /**  该函数用于把需要用到的属性列对应的值从该元组中筛选出来如何生成value
-   *  需要用到的有聚集执行器中，makeaggregate key(value)函数 ,
-   *  其实就是把聚集函数的groupby(aggregate key)所需用到的属性从该元组中筛选出来；
-   *  每一个属性都是一个abstarctExpression，比如group by stu_id, class_id  这里就有两个属性了
-   *  所以在makeaggregatekey等函数中，实际上是for循环遍历存放expressions的容器的
+  /** 
+   *  在聚集执行器的makeaggregate key(还有value)函数中调用,
+   *  比如查询语句中group by后面跟着的c1,c2..这些属性列，每一个都是一个expression，调用evaluate函数就可以把tuple中对应的属性列的值拿出来；
+   *  或者sum(c1),count(c2)等,这些属性列也会生成一个表达式，利用该表达式的evaluate函数也可以把需要计算的属性列提取出来。
+   *  在makeaggregatekey等函数中，for循环遍历expressions容器,对每一个表达式：expression->evaluate(tuple,schema) 
    */
   /** @return The value obtained by evaluating the tuple with the given schema */
   virtual auto Evaluate(const Tuple *tuple, const Schema &schema) const -> Value = 0;

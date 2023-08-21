@@ -59,6 +59,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> right_executor_;
   Tuple outer_table_tuple_;
   Tuple inner_table_tuple_;
+  bool join_finish_ = false;
 };
 
 }  // namespace bustub
