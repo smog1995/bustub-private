@@ -48,7 +48,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
    * @return `true` if a tuple was produced, `false` if there are no more tuples.
    */
   auto Next(Tuple *tuple, RID *rid) -> bool override;
-  auto GetOutputTuple() -> Tuple;
+  auto GetOutputTuple(bool is_left_join = false) -> Tuple;
   /** @return The output schema for the insert */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
@@ -59,8 +59,8 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> right_executor_;
   Tuple outer_table_tuple_;
   Tuple inner_table_tuple_;
-  bool join_finish_ = false;
-  bool left_empty_flag_ = false;
+  // bool join_finish_ = false;
+  bool get_outer_tuple_ = false;
   bool right_empty_flag_ = false;
 };
 
