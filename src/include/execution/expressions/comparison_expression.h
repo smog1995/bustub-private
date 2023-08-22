@@ -46,7 +46,7 @@ class ComparisonExpression : public AbstractExpression {
                     const Schema &right_schema) const -> Value override {
     Value lhs = GetChildAt(0)->EvaluateJoin(left_tuple, left_schema, right_tuple, right_schema);
     Value rhs = GetChildAt(1)->EvaluateJoin(left_tuple, left_schema, right_tuple, right_schema);
-    return ValueFactory::GetBooleanValue(PerformComparison(lhs, rhs));
+    return ValueFactory::GetBooleanValue(PerformComparison(lhs, rhs)); //  最终返回的是布尔值value对象
   }
 
   /** @return the string representation of the expression node and its children */

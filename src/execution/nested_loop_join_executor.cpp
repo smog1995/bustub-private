@@ -11,9 +11,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "execution/executors/nested_loop_join_executor.h"
+#include <vector>
 #include "binder/table_ref/bound_join_ref.h"
 #include "common/exception.h"
 #include "common/rid.h"
+#include "storage/table/tuple.h"
+#include "type/type_id.h"
 
 namespace bustub {
 
@@ -29,7 +32,8 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
     throw bustub::NotImplementedException(fmt::format("join type {} not supported", plan->GetJoinType()));
   }
   RID temp;
-  left_executor_->Next(&outer_table_tuple_, &temp);
+  left_empty_flag_ = !left_executor_->Next(&outer_table_tuple_, &temp);
+  right_empty_flag_ = !right_executor_->Next(&inner_table_tuple_, &temp);
 }
 
 void NestedLoopJoinExecutor::Init() {
@@ -38,19 +42,51 @@ void NestedLoopJoinExecutor::Init() {
 
 auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   RID temp;
-  if (join_finish_) {
+  //   如果已经执行完毕，或者左表为空，或者右表为空而且为内连接，执行结束
+  if (left_empty_flag_ || join_finish_ || (plan_->GetJoinType() == JoinType::INNER && right_empty_flag_)) {
     return false;
   }
-  bool get_inner_tuple = right_executor_->Next(&inner_table_tuple_, &temp);
-  if (!get_inner_tuple) {
-    bool get_out_tuple = left_executor_->Next(&outer_table_tuple_, &temp);
-    if (!get_out_tuple) {
-      join_finish_ = true;
+  bool get_outer_tuple = true;
+  while (get_outer_tuple) {
+    bool get_inner_tuple = ;
+    while (get_inner_tuple) {
+      //   我猜这个谓词是ccomparison_expression
+      Value compare_res_value(plan_->Predicate().EvaluateJoin(&outer_table_tuple_, plan_->GetLeftPlan()->OutputSchema(), &inner_table_tuple_, plan_->GetRightPlan()->OutputSchema())); 
+      Value true_value(TypeId::BOOLEAN,1);
+      if (compare_res_value.CompareEquals(true_value) ==  CmpBool::CmpTrue) {
+        // 非自然连接，会有重复值的属性列
+        *tuple = GetOutputTuple();
+        right_executor_->Next(&inner_table_tuple_, &temp);
+        return true;
+      }
+      get_inner_tuple = right_executor_->Next(&inner_table_tuple_, &temp);
+      
+    }
+    //  如果仍未返回，则获取外表下一个元组，并重置内表迭代器
+    get_out_tuple = left_executor_->Next(&outer_table_tuple_, &temp);
+    right_executor_->Init();
+    get_inner_tuple = right_executor_->Next(&inner_table_tuple_, &temp);
+    if (!get_inner_tuple) {
+      //  说明右表为空表
+      right_empty_flag_ = true;
+      return false;
     }
   }
-  while (get_inner_tuple) {
-    plan_->Predicate().Evaluate(const Tuple *tuple, const Schema &schema)
+  return false;
+}
+
+auto NestedLoopJoinExecutor::GetOutputTuple() ->Tuple {
+  std::vector<Value> res_vector;
+  int left_column_count = plan_->GetLeftPlan()->OutputSchema().GetColumnCount();
+  int right_column_count = plan_->GetRightPlan()->OutputSchema().GetColumnCount();
+  res_vector.reserve(left_column_count + right_column_count);
+  for (int col_index = 0; col_index < left_column_count; col_index++) {
+    res_vector.emplace_back(outer_table_tuple_.GetValue(&plan_->GetLeftPlan()->OutputSchema(), col_index));
   }
+  for (int col_index = 0; col_index < right_column_count; col_index++) {
+    res_vector.emplace_back(outer_table_tuple_.GetValue(&plan_->GetRightPlan()->OutputSchema(), col_index));
+  }
+  return {res_vector, &GetOutputSchema()};
 }
 
 }  // namespace bustub

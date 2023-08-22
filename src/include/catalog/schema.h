@@ -83,7 +83,7 @@ class Schema {
 
   /** @return the indices of non-inlined columns */
   auto GetUnlinedColumns() const -> const std::vector<uint32_t> & { return uninlined_columns_; }
-
+  //  当要从一个元组中拿出全部value时，可以从这拿schema定义中属性列数量，再用tuple->GetValue(schema,col_idx)一一拿出value
   /** @return the number of columns in the schema for the tuple */
   auto GetColumnCount() const -> uint32_t { return static_cast<uint32_t>(columns_.size()); }
 
