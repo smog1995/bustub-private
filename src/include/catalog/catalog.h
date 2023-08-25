@@ -35,7 +35,8 @@ using table_oid_t = uint32_t;
 using column_oid_t = uint32_t;
 using index_oid_t = uint32_t;
 
-/**
+/**   一个表的tableinfo对象包含了该表的定义，table_oid(用于)，table_name ，
+ *以及tableheap指针（tableheap其实就是表的实体，对表中的元组进行操作，或者插入元组，获取元组等都是在这里面）
  * The TableInfo class maintains metadata about a table.
  */
 struct TableInfo {
@@ -58,7 +59,7 @@ struct TableInfo {
   const table_oid_t oid_;
 };
 
-/**
+/**  一个表的indexinfo会存放该表的索引是基于哪些索引建立的（key_schema）
  * The IndexInfo class maintains metadata about a index.
  */
 struct IndexInfo {
@@ -360,7 +361,7 @@ class Catalog {
   /** The next table identifier to be used. */
   std::atomic<table_oid_t> next_table_oid_{0};
 
-  /**
+  /**   如何找到b+树索引呢：1.通过表的名字来找(index_names)，2.通过index_oid来找(indexes_)
    * Map index identifier -> index metadata.
    *
    * NOTE: that `indexes_` owns all index metadata.

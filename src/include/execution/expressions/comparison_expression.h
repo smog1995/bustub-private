@@ -44,9 +44,10 @@ class ComparisonExpression : public AbstractExpression {
 
   auto EvaluateJoin(const Tuple *left_tuple, const Schema &left_schema, const Tuple *right_tuple,
                     const Schema &right_schema) const -> Value override {
+    // std::cout<<"comparison_expression"<<std::endl;
     Value lhs = GetChildAt(0)->EvaluateJoin(left_tuple, left_schema, right_tuple, right_schema);
     Value rhs = GetChildAt(1)->EvaluateJoin(left_tuple, left_schema, right_tuple, right_schema);
-    return ValueFactory::GetBooleanValue(PerformComparison(lhs, rhs)); //  最终返回的是布尔值value对象
+    return ValueFactory::GetBooleanValue(PerformComparison(lhs, rhs));  //  最终返回的是布尔值value对象
   }
 
   /** @return the string representation of the expression node and its children */

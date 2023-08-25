@@ -108,7 +108,7 @@ auto Tuple::KeyFromTuple(const Schema &schema, const Schema &key_schema, const s
     -> Tuple {
   std::vector<Value> values;
   values.reserve(key_attrs.size());
-  for (auto idx : key_attrs) {
+  for (auto idx : key_attrs) {  //  把表中有建立索引的属性列加入到元组中
     values.emplace_back(this->GetValue(&schema, idx));
   }
   return {values, &key_schema};

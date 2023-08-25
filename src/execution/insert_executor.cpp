@@ -62,7 +62,7 @@ auto InsertExecutor::NextHelper() -> int {
     if (!table_indexes_info.empty()) {
       for (auto &index_info : table_indexes_info) {
         // std::cout<<"index_info"<<index_info->index_oid_<<std::endl;
-        index_info->index_->InsertEntry(
+        index_info->index_->InsertEntry(  //  把元组中有建立索引的属性列重新生成一个元组插入到b+索引中
             child_tuple.KeyFromTuple(child_executor_->GetOutputSchema(), index_info->key_schema_,
                                      index_info->index_->GetKeyAttrs()),
             child_rid, exec_ctx_->GetTransaction());

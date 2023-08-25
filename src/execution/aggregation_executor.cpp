@@ -50,7 +50,7 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   execute_flag_ = true;
   if (aht_iterator_ == aht_.End()) {  //  说明为空表
     if (!plan_->GetGroupBys().empty()) {  //  如果group by属性不为空，则返回false，因为空表无法进行聚集
-      std::cout << "空表" << std::endl;
+      // std::cout << "空表" << std::endl;
 
       return false;
     }
