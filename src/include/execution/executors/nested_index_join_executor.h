@@ -47,7 +47,8 @@ class NestIndexJoinExecutor : public AbstractExecutor {
 
   auto Next(Tuple *tuple, RID *rid) -> bool override;
   auto GetOutputTuple(bool is_dangling_tuple = false) -> Tuple;
-  auto GetPredicateTuple() ->Tuple;
+  auto GetPredicateTuple() -> Tuple;
+
  private:
   /** The nested index join plan node. */
   const NestedIndexJoinPlanNode *plan_;

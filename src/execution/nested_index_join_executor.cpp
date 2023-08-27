@@ -36,12 +36,13 @@ auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     return false;
   }
   RID temp;
-  // std::cout<<"元组格式："<<outer_table_tuple_.KeyFromTuple(plan_->InnerTableSchema(), *index_info_->index_->GetKeySchema(),
+  // std::cout<<"元组格式："<<outer_table_tuple_.KeyFromTuple(plan_->InnerTableSchema(),
+  // *index_info_->index_->GetKeySchema(),
   //                                   index_info_->index_->GetKeyAttrs()).ToString(index_info_->index_->GetKeySchema())<<std::endl;
   index_info_->index_->ScanKey(
-    GetPredicateTuple().KeyFromTuple(plan_->InnerTableSchema(), *index_info_->index_->GetKeySchema(),
-                                    index_info_->index_->GetKeyAttrs()),
-    &current_outer_tuple_match_rids_, GetExecutorContext()->GetTransaction());
+      GetPredicateTuple().KeyFromTuple(plan_->InnerTableSchema(), *index_info_->index_->GetKeySchema(),
+                                       index_info_->index_->GetKeyAttrs()),
+      &current_outer_tuple_match_rids_, GetExecutorContext()->GetTransaction());
   while (current_outer_tuple_match_rids_.empty() && get_outer_tuple_) {
     if (current_outer_tuple_match_rids_.empty() && plan_->GetJoinType() == JoinType::LEFT) {
       //  重新填装左右表元组
@@ -53,13 +54,13 @@ auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     get_outer_tuple_ = outer_table_executor_->Next(&outer_table_tuple_, &temp);
     if (!get_outer_tuple_) {
       return false;
-    } 
+    }
     index_info_->index_->ScanKey(
-    GetPredicateTuple().KeyFromTuple(plan_->InnerTableSchema(), *index_info_->index_->GetKeySchema(),
-                                    index_info_->index_->GetKeyAttrs()),
-    &current_outer_tuple_match_rids_, GetExecutorContext()->GetTransaction());
+        GetPredicateTuple().KeyFromTuple(plan_->InnerTableSchema(), *index_info_->index_->GetKeySchema(),
+                                         index_info_->index_->GetKeyAttrs()),
+        &current_outer_tuple_match_rids_, GetExecutorContext()->GetTransaction());
   }
-  
+
   // std::cout<<current_outer_tuple_match_rids_.back().ToString()<<std::endl;
   bool get_inner_tuple = table_info_->table_->GetTuple(current_outer_tuple_match_rids_.back(), &inner_table_tuple_,
                                                        GetExecutorContext()->GetTransaction());
@@ -89,11 +90,11 @@ auto NestIndexJoinExecutor::GetOutputTuple(bool is_dangling_tuple) -> Tuple {
       res_vector.emplace_back(col_index_value);
     }
   }
-  
+
   return {res_vector, &GetOutputSchema()};
 }
 
-auto NestIndexJoinExecutor::GetPredicateTuple() ->Tuple {
+auto NestIndexJoinExecutor::GetPredicateTuple() -> Tuple {
   Value predicate_value(plan_->key_predicate_->Evaluate(&outer_table_tuple_, plan_->GetChildPlan()->OutputSchema()));
   std::vector<Value> predicate_vec;
   predicate_vec.emplace_back(predicate_value);

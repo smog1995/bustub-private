@@ -28,7 +28,7 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
       plan_(plan),
       left_executor_(std::move(left_executor)),
       right_executor_(std::move(right_executor)) {
-  std::cout<<"loopjoin"<<std::endl;
+  std::cout << "loopjoin" << std::endl;
   if (!(plan->GetJoinType() == JoinType::LEFT || plan->GetJoinType() == JoinType::INNER)) {
     // Note for 2022 Fall: You ONLY need to implement left join and inner join.
     throw bustub::NotImplementedException(fmt::format("join type {} not supported", plan->GetJoinType()));
@@ -64,7 +64,7 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   //  处理内表为空的情况 ----------------------------
   // std::cout<<"next"<<std::endl;
   if (!get_outer_tuple_) {  //   外表循环完毕
-    std::cout<<"outer_table_recur_finish."<<std::endl;
+    std::cout << "outer_table_recur_finish." << std::endl;
     return false;
   }
   if (right_empty_flag_) {  //  内表为空表
@@ -79,8 +79,8 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     return true;
   }
   //  -------------------------------------------
-  if (!get_inner_tuple_) {    //  内表循环完毕
-    std::cout<<"右表遍历完毕，外表开始执行下一个元组"<<std::endl;
+  if (!get_inner_tuple_) {  //  内表循环完毕
+    std::cout << "右表遍历完毕，外表开始执行下一个元组" << std::endl;
     right_executor_->Init();  //  重置内表
     get_inner_tuple_ = right_executor_->Next(&inner_table_tuple_, &temp);
     /**  左外连接，而且该外表元组还未匹配到内表的任一元组，则需返回悬空元组
@@ -101,7 +101,7 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     Value compare_res_value(plan_->Predicate().EvaluateJoin(&outer_table_tuple_, plan_->GetLeftPlan()->OutputSchema(),
                                                             &inner_table_tuple_,
                                                             plan_->GetRightPlan()->OutputSchema()));
-    std::cout<<"nest_loop谓词:"<<plan_->Predicate().ToString()<<std::endl;
+    std::cout << "nest_loop谓词:" << plan_->Predicate().ToString() << std::endl;
     Value true_value(TypeId::BOOLEAN, 1);
     if (compare_res_value.CompareEquals(true_value) == CmpBool::CmpTrue) {
       // 非自然连接，会有重复值的属性列
