@@ -22,21 +22,21 @@
 namespace bustub {
 
 auto Optimizer::OptimizeOrderByAsIndexScan(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
+  // 从上到下，火山模型是从顶到底的执行顺序
   std::vector<AbstractPlanNodeRef> children;
   for (const auto &child : plan->GetChildren()) {
     children.emplace_back(OptimizeOrderByAsIndexScan(child));
   }
   auto optimized_plan = plan->CloneWithChildren(std::move(children));
-
   if (optimized_plan->GetType() == PlanType::Sort) {
     const auto &sort_plan = dynamic_cast<const SortPlanNode &>(*optimized_plan);
     const auto &order_bys = sort_plan.GetOrderBy();
-
+    //  orderby中的属性列必须只有一项才能转化为index扫描
     // Has exactly one order by column
     if (order_bys.size() != 1) {
       return optimized_plan;
     }
-
+    //  同时必须为升序排序才可以用索引
     // Order type is asc or default
     const auto &[order_type, expr] = order_bys[0];
     if (!(order_type == OrderByType::ASC || order_type == OrderByType::DEFAULT)) {
@@ -50,11 +50,11 @@ auto Optimizer::OptimizeOrderByAsIndexScan(const AbstractPlanNodeRef &plan) -> A
     }
 
     auto order_by_column_id = column_value_expr->GetColIdx();
-
+    //  只能排一个表（临时表），不可能有多个表同时排
     // Has exactly one child
     BUSTUB_ENSURE(optimized_plan->children_.size() == 1, "Sort with multiple children?? Impossible!");
     const auto &child_plan = optimized_plan->children_[0];
-
+    //  这个步骤总的来说就是要看所排列的表的属性列是否有一列跟orderby的属性列相同
     if (child_plan->GetType() == PlanType::SeqScan) {
       const auto &seq_scan = dynamic_cast<const SeqScanPlanNode &>(*child_plan);
       const auto *table_info = catalog_.GetTable(seq_scan.GetTableOid());

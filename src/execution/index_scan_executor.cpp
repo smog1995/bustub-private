@@ -15,10 +15,10 @@
 namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
     : AbstractExecutor(exec_ctx), plan_(plan) {
+  // std::cout<< "index_scan"<<std::endl;
   auto index_info = exec_ctx->GetCatalog()->GetIndex(plan->GetIndexOid());
   b_plus_tree_index_ = dynamic_cast<BPlusTreeIndexForOneIntegerColumn *>(index_info->index_.get());
   //  make_unique函数可以简化动态分配unique_ptr对象的过程，并避免了手动释放资源的问题。
-  ;
   index_iterator_ = std::make_unique<IndexIterator<IntegerKeyType, IntegerValueType, IntegerComparatorType>>(
       b_plus_tree_index_->GetBeginIterator());
   // table_info_ = exec_ctx->GetCatalog()->GetTable()->table_.get();

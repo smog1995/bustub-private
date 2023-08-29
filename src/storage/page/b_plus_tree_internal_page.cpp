@@ -93,7 +93,6 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertInInternal(const KeyType &key, const 
   array_[index].first = key;
   array_[index].second = value;
   IncreaseSize(1);
-  // std::cout << "打印一遍" << std::endl;
   // printf("Insert In Internal:");
   for (index = 0; index < GetSize(); index++) {
     // std::cout << array_[index].second << " ";

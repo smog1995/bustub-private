@@ -654,7 +654,7 @@ void BPLUSTREE_TYPE::DeleteEntry(BPlusTreePage *current_page, const KeyType &key
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
-  //不上锁也没关系，这个函数不要求实现并发
+  //  不上锁也没关系，这个函数不要求实现并发
   page_id_t target_page_id = root_page_id_;
   if (root_page_id_ == INVALID_PAGE_ID) {
     IndexIterator<KeyType, ValueType, KeyComparator> index_iterator(comparator_);

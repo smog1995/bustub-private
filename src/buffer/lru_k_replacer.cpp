@@ -242,6 +242,6 @@ void LRUKReplacer::DoubleList::PrintList() const {
     std::cout << p->frame_id_ << " ";
     p = p->next_;
   }
-  std::cout << "队列元素数量:" << size_ << std::endl;
+  // std::cout << "队列元素数量:" << size_ << std::endl;
 }
 }  // namespace bustub

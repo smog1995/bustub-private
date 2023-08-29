@@ -18,6 +18,7 @@ namespace bustub {
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
     : AbstractExecutor(exec_ctx), plan_(plan) {
+  // std::cout<<"seq_scan"<<std::endl;
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->table_name_);
   // catalog->CreateTable(exec_ctx_->GetTransaction(), plan_->table_name_, GetOutputSchema());
   // 实际上不需要创建表，只是执行查询操作 GetTable 获取到TableInfo类，该类的tables_成员变量是TableHeap的智能指针，

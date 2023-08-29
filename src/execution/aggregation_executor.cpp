@@ -27,7 +27,7 @@ AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const Aggreg
       child_(std::move(child)),
       aht_(plan->GetAggregates(), plan->GetAggregateTypes()),
       aht_iterator_(aht_.Begin()) {
-  std::cout << "init" << std::endl;
+  // std::cout << "init" << std::endl;
   Tuple child_tuple;
   RID child_rid;
   bool fetch_child_res = child_->Next(&child_tuple, &child_rid);
@@ -44,7 +44,7 @@ void AggregationExecutor::Init() { aht_iterator_ = aht_.Begin(); }
 auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (aht_iterator_ == aht_.End() &&
       execute_flag_) {  //  execute_flag用来标记是否为空表,空表的话一次next都不执行则不会返回tuple
-    std::cout << "end" << std::endl;
+    // std::cout << "end" << std::endl;
     return false;
   }
   execute_flag_ = true;

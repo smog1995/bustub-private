@@ -86,7 +86,7 @@ auto NestIndexJoinExecutor::GetOutputTuple(bool is_dangling_tuple) -> Tuple {
   } else {  // 为左值连接，右边的属性列均为空
     for (int col_index = 0; col_index < right_column_count; col_index++) {
       Value col_index_value(plan_->inner_table_schema_->GetColumn(col_index).GetType(),
-                            BUSTUB_INT32_NULL);  //创建空值Value
+                            BUSTUB_INT32_NULL);  //  创建空值Value
       res_vector.emplace_back(col_index_value);
     }
   }

@@ -130,7 +130,7 @@ class HtmlWriter : public ResultWriter {
 
  public:
   void WriteCell(const std::string &cell) override {
-    std::cout << cell;
+    // std::cout << cell;
     if (!simplified_output_) {
       ss_ << "<td>" << Escape(cell) << "</td>";
     } else {

@@ -160,7 +160,6 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Delete(const KeyType &key, KeyComparator &compa
   }
   DecrementSize();
   // Debug
-  // std::cout << "delete in leaf:现在的节点为 " << GetPageId() << " ,值有:";
   for (int idx = 0; idx < GetSize(); idx++) {
     // std::cout << array_[idx].first << " ";
   }

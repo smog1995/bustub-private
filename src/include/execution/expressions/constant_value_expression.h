@@ -36,7 +36,7 @@ class ConstantValueExpression : public AbstractExpression {
 
   /** @return the string representation of the plan node and its children */
   auto ToString() const -> std::string override {
-    std::cout << "constant_value_expression" << std::endl;
+    // std::cout << "constant_value_expression" << std::endl;
     return val_.ToString();
   }
 

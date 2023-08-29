@@ -54,8 +54,8 @@ auto DeleteExecutor::NextHelper() -> int {
   while (child_res) {
     delete_row++;
     table_info_->table_->MarkDelete(child_rid, exec_ctx_->GetTransaction());
-    std::cout << "child_tuple:" << child_tuple.ToString(&child_executor_->GetOutputSchema()) << std::endl;
-    std::cout << "child_rid:" << child_rid.ToString() << std::endl;
+    // std::cout << "child_tuple:" << child_tuple.ToString(&child_executor_->GetOutputSchema()) << std::endl;
+    // std::cout << "child_rid:" << child_rid.ToString() << std::endl;
     auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
     if (!table_indexes_info.empty()) {
       for (auto &index_info : table_indexes_info) {

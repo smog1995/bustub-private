@@ -382,6 +382,7 @@ auto GetFunctionOf(const MockScanPlanNode *plan) -> std::function<Tuple(size_t)>
 MockScanExecutor::MockScanExecutor(ExecutorContext *exec_ctx, const MockScanPlanNode *plan)
     : AbstractExecutor{exec_ctx}, plan_{plan}, func_(GetFunctionOf(plan)), size_(GetSizeOf(plan)) {
   if (GetShuffled(plan)) {
+    // std::cout<<"mockscan"<<std::endl;
     for (size_t i = 0; i < size_; i++) {
       shuffled_idx_.push_back(i);
     }
@@ -397,6 +398,7 @@ void MockScanExecutor::Init() {
 }
 
 auto MockScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  // std::cout<<"mock next"<<std::endl;
   if (cursor_ == size_) {
     // Scan complete
     return EXECUTOR_EXHAUSTED;
