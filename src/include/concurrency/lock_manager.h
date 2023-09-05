@@ -112,7 +112,7 @@ class LockManager {
    *    - Only if allowed
    *
    *    For instance S/IS/SIX locks are not required under READ_UNCOMMITTED, and any such attempt should set the
-   *    TransactionState as ABORTED and throw a TransactionAbortException (LOCK_SHARED_ON_READ_UNCOMMITTED).
+   *    Transaction State as ABORTED and throw a TransactionAbortException (LOCK_SHARED_ON_READ_UNCOMMITTED).
    *
    *    Similarly, X/IX locks on rows are not allowed if the the Transaction State is SHRINKING, and any such attempt
    *    should set the TransactionState as ABORTED and throw a TransactionAbortException (LOCK_ON_SHRINKING).
@@ -187,7 +187,9 @@ class LockManager {
    *
    *    REPEATABLE_READ:
    *        Unlocking S/X locks should set the transaction state to SHRINKING
-   *
+   *      可以发现读已提交和可重复读实际上区别在于读锁是否可以随意释放，读已提交则可以随意释放：可以对同一个数据读取多次，
+   *      那么就可能出现第一遍读的数据还未被修改，但第二遍其他事务修改了数据，读到了不同的数据，从而发生不可重复读；
+   *      如果是可重复读的实现则是读写锁都只能在收缩阶段释放，那么就不会出现对同一数据读取两遍或以上的情况。
    *    READ_COMMITTED:
    *        Unlocking X locks should set the transaction state to SHRINKING.
    *        Unlocking S locks does not affect transaction state.
@@ -314,6 +316,12 @@ class LockManager {
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
   std::mutex waits_for_latch_;
+  //  LockMode { SHARED  0, EXCLUSIVE  1, INTENTION_SHARED  2, INTENTION_EXCLUSIVE  3, SHARED_INTENTION_EXCLUSIVE  4 };
+  bool update_lock_[5][5] = {{true, true, false, false, true},
+                             {false, false, false, false, false},
+                             {true, true, true, true, true},
+                             {false, true, false, true, true},
+                             {false, true, false, false, false}};
 };
 
 }  // namespace bustub
