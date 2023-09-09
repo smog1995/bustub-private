@@ -64,7 +64,7 @@ class LockManager {
   class LockRequestQueue {
    public:
     /** List of lock requests for the same resource (table or row) */
-    std::list<LockRequest *> request_queue_;
+    std::list<std::unique_ptr<LockRequest>> request_queue_;
     /** For notifying blocked transactions on this rid */
     std::condition_variable cv_;
     /** txn_id of an upgrading transaction (if any) */
@@ -220,7 +220,9 @@ class LockManager {
    * @return true if the upgrade is successful, false otherwise
    */
   auto LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) noexcept(false) -> bool;
-
+  auto GrantLock(LockRequestQueue *lock_request_queue, LockRequest &lock_request) -> bool;
+  void DeleteTableLockInTransaction(Transaction *txn, LockMode lock_mode, table_oid_t oid);
+  void InsertTableLockInTransaction(Transaction *txn, LockMode lock_mode, table_oid_t oid);
   /**
    * Release the lock held on a table by the transaction.
    *
@@ -254,7 +256,7 @@ class LockManager {
   /**
    * Release the lock held on a row by the transaction.
    *
-   * This method should abort the transaction and throw a
+   * This mehouldthod s abort the transaction and throw a
    * TransactionAbortException under certain circumstances.
    * See [UNLOCK_NOTE] in header file.
    *
@@ -322,6 +324,11 @@ class LockManager {
                              {true, true, true, true, true},
                              {false, true, false, true, true},
                              {false, true, false, false, false}};
+  bool compatable_lock_[5][5] = {{true, false, true, false, false},
+                                 {false, false, false, false, false},
+                                 {true, false, true, true, true},
+                                 {false, false, true, true, false},
+                                 {false, false, true, false, false}};
 };
 
 }  // namespace bustub
