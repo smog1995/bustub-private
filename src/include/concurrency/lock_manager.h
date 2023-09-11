@@ -190,7 +190,7 @@ class LockManager {
    *
    *    READ_COMMITTED:
    *        Unlocking X locks should set the transaction state to SHRINKING.
-   *        Unlocking S locks does not affect transaction state.
+   *        Unlocking S locks does not affect transaction state.  读锁不用在收缩阶段释放，可以随时释放
    *
    *   READ_UNCOMMITTED:
    *        Unlocking X locks should set the transaction state to SHRINKING.
