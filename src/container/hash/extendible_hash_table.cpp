@@ -177,10 +177,10 @@ void ExtendibleHashTable<K, V>::PrintAll() const {
     for (auto &ele : li) {
       std::cout << " <<" << ele.first << ">> ";
     }
-    std::cout << "该桶的深度：" << dir_[index]->GetDepth() << std::endl;
+    // std::cout << "该桶的深度：" << dir_[index]->GetDepth() << std::endl;
   }
 
-  std::cout << "全局深度：" << global_depth_ << "桶数量" << num_buckets_ << std::endl;
+  // std::cout << "全局深度：" << global_depth_ << "桶数量" << num_buckets_ << std::endl;
 }
 
 //===--------------------------------------------------------------------===//

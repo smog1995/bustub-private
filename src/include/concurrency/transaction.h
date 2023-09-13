@@ -290,10 +290,12 @@ class Transaction {
   }
 
   auto IsTableIntentionExclusiveLocked(const table_oid_t &oid) -> bool {
+    std::cout << "意向写是否上锁：" << (ix_table_lock_set_->find(oid) != ix_table_lock_set_->end()) << std::endl;
     return ix_table_lock_set_->find(oid) != ix_table_lock_set_->end();
   }
 
   auto IsTableExclusiveLocked(const table_oid_t &oid) -> bool {
+    // std::cout << "是否上锁：" << (x_table_lock_set_->find(oid) != x_table_lock_set_->end()) << std::endl;
     return x_table_lock_set_->find(oid) != x_table_lock_set_->end();
   }
 
