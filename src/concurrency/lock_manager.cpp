@@ -14,8 +14,13 @@
 #include <algorithm>
 #include <memory>
 #include <unordered_set>
+#include <algorithm>
+#include <memory>
+#include <unordered_set>
 
 #include "common/config.h"
+#include "common/exception.h"
+#include "common/rid.h"
 #include "common/exception.h"
 #include "common/rid.h"
 #include "concurrency/transaction.h"
