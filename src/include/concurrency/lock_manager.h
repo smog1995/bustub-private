@@ -220,7 +220,7 @@ class LockManager {
    * @return true if the upgrade is successful, false otherwise
    */
   auto LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) noexcept(false) -> bool;
-  auto GrantLock(LockRequestQueue *lock_request_queue, LockRequest &lock_request) -> bool;
+  auto GrantLock(LockRequestQueue *lock_request_queue, LockMode lock_mode, txn_id_t txn_id) -> bool;
   void DeleteTableLockInTransaction(Transaction *txn, LockMode lock_mode, table_oid_t oid);
   void InsertTableLockInTransaction(Transaction *txn, LockMode lock_mode, table_oid_t oid);
   /**
