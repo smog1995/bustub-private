@@ -318,7 +318,7 @@ class LockManager {
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
   std::mutex waits_for_latch_;
-  //  LockMode { SHARED  0, EXCLUSIVE  1, INTENTION_SHARED  2, INTENTION_EXCLUSIVE  3, SHARED_INTENTION_EXCLUSIVE  4 };
+  //  LockMode {0 SHARED, 1 EXCLUSIVE, 2 INTENTION_SHARED, 3 INTENTION_EXCLUSIVE, 4 SHARED_INTENTION_EXCLUSIVE };
   bool update_lock_[5][5] = {{true, true, false, false, true},
                              {false, false, false, false, false},
                              {true, true, true, true, true},
