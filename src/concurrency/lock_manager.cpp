@@ -214,16 +214,20 @@ void LockManager::InsertTableLockInTransaction(Transaction *txn, LockMode lock_m
 
 auto LockManager::GrantLock(LockRequestQueue *lock_request_queue, LockMode lock_mode, txn_id_t txn_id) -> bool {
   //  第一步，判断队列中已授予锁的请求是否与当前请求的锁兼容
+  std::cout << "grantlock: ";
   for (auto &ele : lock_request_queue->request_queue_) {
     if (ele->granted_ && !compatable_lock_[static_cast<int>(lock_mode)][static_cast<int>(ele->lock_mode_)]) {
+      std::cout << "不兼容授予锁 " << std::endl;
       return false;
     }
   }
   //  第二步，判断是否有锁升级，锁升级请求优先级最高，如果当前请求就是锁升级请求，直接通过，如果不是，返回false，优先级低于锁升级请求，得先让锁升级请求先过
   if (lock_request_queue->upgrading_ == txn_id) {
+    std::cout << "进行锁升级的是当前事务" << std::endl;
     return true;
   }
   if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
+    std::cout << "进行锁升级的不是当前事务" << std::endl;
     return false;
   }
   //  第三步，不存在锁升级，则根据优先级来决定是否授予锁,找到第一个waiting请求，如果是当前请求，返回true，如果不是当前请求，则看是否与第一个waiting的锁兼容，兼容则放行
@@ -243,6 +247,7 @@ auto LockManager::GrantLock(LockRequestQueue *lock_request_queue, LockMode lock_
 }
 
 auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool {
+  std::cout << "unlock table: ";
   //  如果行锁未全部释放，则异常
   if ((txn->GetSharedRowLockSet()->find(oid) != txn->GetSharedRowLockSet()->end() &&
        !txn->GetSharedRowLockSet()->find(oid)->second.empty()) ||
@@ -435,6 +440,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
 }
 
 auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID &rid) -> bool {
+  std::cout << "unlock row: ";
   row_lock_map_latch_.lock();
   if (row_lock_map_.count(rid) == 0) {
     row_lock_map_latch_.unlock();
@@ -448,7 +454,6 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   for (auto ele = request_lock_queue->request_queue_.begin(); ele != request_lock_queue->request_queue_.end(); ele++) {
     if ((*ele)->txn_id_ == txn->GetTransactionId()) {
       //  同时对事务的状态进行更新
-      // txn->LockTxn();
       if ((*ele)->lock_mode_ == LockMode::SHARED) {
         txn->GetSharedLockSet()->erase(rid);
         txn->GetSharedRowLockSet()->find(oid)->second.erase(rid);
@@ -467,22 +472,8 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
             ((*ele)->lock_mode_ == LockMode::EXCLUSIVE || (*ele)->lock_mode_ == LockMode::SHARED)))) {
         txn->SetState(TransactionState::SHRINKING);
       }
-      // if (txn->GetState() == TransactionState::GROWING &&
-      //     ((txn->GetIsolationLevel() == IsolationLevel::REPEATABLE_READ) ||
-      //      (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED && (*ele)->lock_mode_ ==
-      //      LockMode::EXCLUSIVE))) {
-      //   txn->SetState(TransactionState::SHRINKING);
-      // }
-      if ((*ele)->lock_mode_ == LockMode::SHARED) {
-        txn->GetSharedRowLockSet()->find(oid)->second.erase(rid);
-        txn->GetSharedLockSet()->erase(rid);
-      } else if ((*ele)->lock_mode_ == LockMode::EXCLUSIVE) {
-        txn->GetExclusiveRowLockSet()->find(oid)->second.erase(rid);
-        txn->GetExclusiveLockSet()->erase(rid);
-      }
       request_lock_queue->request_queue_.erase(ele);  //  将该请求移除队列
-      // txn->UnlockTxn();
-      request_lock_queue->cv_.notify_all();  //  锁释放，可以唤醒其他事务进行锁授予
+      request_lock_queue->cv_.notify_all();           //  锁释放，可以唤醒其他事务进行锁授予
       std::cout << "unlock row finish" << std::endl;
       return true;
     }
@@ -492,11 +483,30 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   return false;
 }
 
-void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {}
+void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
+  waits_for_latch_.lock();
+  waits_for_[t1].push_back(t2);
+  waits_for_latch_.unlock();
+}
 
-void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {}
-
-auto LockManager::HasCycle(txn_id_t *txn_id) -> bool { return false; }
+void LockManager::RemoveEdge(txn_id_t t1, txn_id_t t2) {
+  waits_for_latch_.lock();
+  for (size_t index = 0; index < waits_for_.size(); index++) {
+    if (waits_for_[t1][index] == t2) {
+      waits_for_.erase(index);
+      break;
+    }
+  }
+}
+void LockManager::DepthFirstSearch(txn_id_t txn_id) {
+  
+}
+auto LockManager::HasCycle(txn_id_t *txn_id) -> bool {
+  bool flag = false;
+  for (size_t index = 0; index < waits_for_.size() && !flag; index++) {
+    
+  }
+}
 
 auto LockManager::GetEdgeList() -> std::vector<std::pair<txn_id_t, txn_id_t>> {
   std::vector<std::pair<txn_id_t, txn_id_t>> edges(0);

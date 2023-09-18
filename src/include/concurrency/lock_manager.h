@@ -290,6 +290,8 @@ class LockManager {
    * @param[out] txn_id if the graph has a cycle, will contain the newest transaction ID
    * @return false if the graph has no cycle, otherwise stores the newest transaction ID in the cycle to txn_id
    */
+  void DepthFirstSearch(txn_id_t txn_id);
+
   auto HasCycle(txn_id_t *txn_id) -> bool;
 
   /**
@@ -318,6 +320,7 @@ class LockManager {
   std::thread *cycle_detection_thread_;
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+  std::vector<bool> visited_;
   std::mutex waits_for_latch_;
   //  LockMode {0 SHARED, 1 EXCLUSIVE, 2 INTENTION_SHARED, 3 INTENTION_EXCLUSIVE, 4 SHARED_INTENTION_EXCLUSIVE };
   bool update_lock_[5][5] = {{true, true, false, false, true},
