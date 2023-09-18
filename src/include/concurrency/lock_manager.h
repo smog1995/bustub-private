@@ -82,6 +82,7 @@ class LockManager {
   }
 
   ~LockManager() {
+    std::cout << "析构" << std::endl;
     enable_cycle_detection_ = false;
     cycle_detection_thread_->join();
     delete cycle_detection_thread_;
