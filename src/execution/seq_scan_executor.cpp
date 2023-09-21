@@ -25,6 +25,7 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
   // 再用begin函数进行构造Iterator
   table_iterator_ =
       std::make_unique<TableIterator>(TableIterator(table_info_->table_->Begin(exec_ctx_->GetTransaction())));
+  transaction_ = exec_ctx_->GetTransaction();
 }
 
 void SeqScanExecutor::Init() {
@@ -36,9 +37,12 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (*table_iterator_ == table_info_->table_->End()) {
     return false;
   }
+  exec_ctx_->GetLockManager()->LockRow(transaction_, LockManager::LockMode::SHARED, table_info_->oid_,
+                                       (*table_iterator_)->GetRid());
   *tuple = **table_iterator_;
   ++*table_iterator_;
   *rid = tuple->GetRid();
+  exec_ctx_->GetLockManager()->UnlockRow(transaction_, table_info_->oid_, *rid);
   return true;
 }
 

@@ -220,6 +220,7 @@ class LockManager {
    * @param oid the table_oid_t of the table to be locked in lock_mode
    * @return true if the upgrade is successful, false otherwise
    */
+  void RemoveEdgeAfterUnlock(txn_id_t be_waited_txn_id, LockRequestQueue *lock_request_queue);
   auto LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) noexcept(false) -> bool;
   auto GrantLock(LockRequestQueue *lock_request_queue, LockMode lock_mode, txn_id_t txn_id) -> bool;
   void DeleteTableLockInTransaction(Transaction *txn, LockMode lock_mode, table_oid_t oid);
@@ -290,7 +291,7 @@ class LockManager {
    * @param[out] txn_id if the graph has a cycle, will contain the newest transaction ID
    * @return false if the graph has no cycle, otherwise stores the newest transaction ID in the cycle to txn_id
    */
-  void DepthFirstSearch(txn_id_t txn_id);
+  void DepthFirstSearch(txn_id_t txn_id, bool &cycle_flag);
 
   auto HasCycle(txn_id_t *txn_id) -> bool;
 
@@ -298,7 +299,8 @@ class LockManager {
    * @return all edges in current waits_for graph
    */
   auto GetEdgeList() -> std::vector<std::pair<txn_id_t, txn_id_t>>;
-
+  void ClearAfterAborted(LockRequestQueue *lock_request_queue, Transaction *txn);
+  void NotifyOtherThread(Transaction *transaction);
   /**
    * Runs cycle detection in the background.
    */
@@ -320,7 +322,10 @@ class LockManager {
   std::thread *cycle_detection_thread_;
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
-  std::vector<bool> visited_;
+  std::unordered_map<txn_id_t, std::vector<txn_id_t>> graph_;
+  std::unordered_map<txn_id_t, bool> visited_;
+
+  std::unordered_map<txn_id_t, bool> onpath_;
   std::mutex waits_for_latch_;
   //  LockMode {0 SHARED, 1 EXCLUSIVE, 2 INTENTION_SHARED, 3 INTENTION_EXCLUSIVE, 4 SHARED_INTENTION_EXCLUSIVE };
   bool update_lock_[5][5] = {{true, true, false, false, true},
