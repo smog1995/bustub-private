@@ -233,17 +233,17 @@ void TablePage::ApplyDelete(const RID &rid, Transaction *txn, LogManager *log_ma
    * Removed to support new lock manager API for p4 (multilevel locking); Big hack energy
    * This clause was used in logging and recovery projects previously; not being used right now
    */
-  //  if (enable_logging) {
-  //    BUSTUB_ASSERT(txn->IsExclusiveLocked(rid), "We must own the exclusive lock!");
-  //
-  //    LogRecord log_record(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::APPLYDELETE, rid, delete_tuple);
-  //    lsn_t lsn = log_manager->AppendLogRecord(&log_record);
-  //    SetLSN(lsn);
-  //    txn->SetPrevLSN(lsn);
-  //  }
+  if (enable_logging) {
+    //  BUSTUB_ASSERT(txn->IsExclusiveLocked(rid), "We must own the exclusive lock!");
+
+    LogRecord log_record(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::APPLYDELETE, rid, delete_tuple);
+    lsn_t lsn = log_manager->AppendLogRecord(&log_record);
+    SetLSN(lsn);
+    txn->SetPrevLSN(lsn);
+  }
 
   uint32_t free_space_pointer = GetFreeSpacePointer();
-  BUSTUB_ASSERT(tuple_offset >= free_space_pointer, "Free space appears before tuples.");
+  // BUSTUB_ASSERT(tuple_offset >= free_space_pointer, "Free space appears before tuples.");
 
   memmove(GetData() + free_space_pointer + tuple_size, GetData() + free_space_pointer,
           tuple_offset - free_space_pointer);

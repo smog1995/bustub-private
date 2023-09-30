@@ -27,21 +27,20 @@ InsertExecutor::InsertExecutor(
     std::unique_ptr<AbstractExecutor> &&child_executor)  //  注意这里并不是万能引用（只有用模板才是），这是右值引用
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->table_oid_);
+  transaction_ = exec_ctx->GetTransaction();
 }
 
 void InsertExecutor::Init() {}
 //  需要使用catalog来创建index等，
 
-auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
+auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (execute_finish_flag_) {
     return false;
   }
   std::vector<Value> values;
-
   int insert_row = NextHelper();  //  一次性插入子执行器的所有元祖（一条insert中可能插入多条元祖）
   Value row_affect_num(INTEGER, insert_row);
   values.emplace_back(row_affect_num);
-  // std::cout<<"res_tuple";
   Tuple res_tuple(values, &GetOutputSchema());
   *tuple = res_tuple;
   execute_finish_flag_ = true;
@@ -57,16 +56,20 @@ auto InsertExecutor::NextHelper() -> int {
     insert_row++;
     // std::cout<<"child_tuple:"<<child_tuple.ToString(&child_executor_->GetOutputSchema())<<std::endl;
     table_info_->table_->InsertTuple(child_tuple, &child_rid, exec_ctx_->GetTransaction());
-
+    // 事务追加写记录
+    // TableWriteRecord write_record(child_rid, WType::INSERT, child_tuple, table_info_->table_.get());
+    // transaction_->AppendTableWriteRecord(write_record);
     auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+
     if (!table_indexes_info.empty()) {
       for (auto &index_info : table_indexes_info) {
         // std::cout<<"index_info"<<index_info->index_oid_<<std::endl;
         index_info->index_->InsertEntry(  //  把元组中有建立索引的属性列重新生成一个元组插入到b+索引中
             child_tuple.KeyFromTuple(child_executor_->GetOutputSchema(), index_info->key_schema_,
                                      index_info->index_->GetKeyAttrs()),
-            child_rid, exec_ctx_->GetTransaction());
-        // index_info->index_->InsertEntry(child_tuple, , exec_ctx_->GetTransaction());
+            child_rid, transaction_);
+        // IndexWriteRecord index_write_record(child_rid, table_info_->oid_, WType::INSERT, child_tuple,
+        // index_info->index_oid_, exec_ctx_->GetCatalog()); transaction_->AppendIndexWriteRecord(index_write_record);
       }
     }
     child_res = child_executor_->Next(&child_tuple, &child_rid);

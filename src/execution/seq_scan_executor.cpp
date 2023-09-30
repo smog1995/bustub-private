@@ -13,6 +13,7 @@
 #include "execution/executors/seq_scan_executor.h"
 #include <memory>
 #include "common/config.h"
+#include "concurrency/transaction.h"
 
 namespace bustub {
 
@@ -26,6 +27,9 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
   table_iterator_ =
       std::make_unique<TableIterator>(TableIterator(table_info_->table_->Begin(exec_ctx_->GetTransaction())));
   transaction_ = exec_ctx_->GetTransaction();
+  if (transaction_->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
+    exec_ctx_->GetLockManager()->LockTable(transaction_, LockManager::LockMode::INTENTION_SHARED, table_info_->oid_);
+  }
 }
 
 void SeqScanExecutor::Init() {
@@ -34,15 +38,21 @@ void SeqScanExecutor::Init() {
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  std::cout << "seqscan next" << std::endl;
   if (*table_iterator_ == table_info_->table_->End()) {
     return false;
   }
-  exec_ctx_->GetLockManager()->LockRow(transaction_, LockManager::LockMode::SHARED, table_info_->oid_,
-                                       (*table_iterator_)->GetRid());
+  if (transaction_->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
+    bool lock_res = exec_ctx_->GetLockManager()->LockRow(transaction_, LockManager::LockMode::SHARED, table_info_->oid_,
+                                                         (*table_iterator_)->GetRid());
+    if (!lock_res) {
+      transaction_->SetState(TransactionState::ABORTED);
+      return false;
+    }
+  }
   *tuple = **table_iterator_;
   ++*table_iterator_;
   *rid = tuple->GetRid();
-  exec_ctx_->GetLockManager()->UnlockRow(transaction_, table_info_->oid_, *rid);
   return true;
 }
 

@@ -17,11 +17,11 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "common/config.h"
 #include "common/rid.h"
 #include "concurrency/transaction.h"
@@ -285,13 +285,13 @@ class LockManager {
    * @param t2 transaction being waited for
    */
   auto RemoveEdge(txn_id_t t1, txn_id_t t2) -> void;
-
+  auto RemoveAbortedEdge(txn_id_t aborted_txn_id) -> void;
   /**
    * Checks if the graph has a cycle, returning the newest transaction ID in the cycle if so.
    * @param[out] txn_id if the graph has a cycle, will contain the newest transaction ID
    * @return false if the graph has no cycle, otherwise stores the newest transaction ID in the cycle to txn_id
    */
-  void DepthFirstSearch(txn_id_t txn_id, bool &cycle_flag);
+  void DepthFirstSearch(txn_id_t txn_id, bool &cycle_flag, txn_id_t *youngest_txn_id);
 
   auto HasCycle(txn_id_t *txn_id) -> bool;
 
@@ -324,7 +324,7 @@ class LockManager {
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> graph_;
   std::unordered_map<txn_id_t, bool> visited_;
-
+  std::vector<txn_id_t> vertex_;
   std::unordered_map<txn_id_t, bool> onpath_;
   std::mutex waits_for_latch_;
   //  LockMode {0 SHARED, 1 EXCLUSIVE, 2 INTENTION_SHARED, 3 INTENTION_EXCLUSIVE, 4 SHARED_INTENTION_EXCLUSIVE };

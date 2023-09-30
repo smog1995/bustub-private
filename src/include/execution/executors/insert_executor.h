@@ -61,6 +61,7 @@ class InsertExecutor : public AbstractExecutor {
   // std::unique_ptr<AbstractExecutor> child_executor_;
   std::unique_ptr<AbstractExecutor> child_executor_;
   bool execute_finish_flag_ = false;
+  Transaction *transaction_;
 };
 
 }  // namespace bustub

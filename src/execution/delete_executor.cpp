@@ -27,6 +27,8 @@ DeleteExecutor::DeleteExecutor(ExecutorContext *exec_ctx, const DeletePlanNode *
   std::vector<Column> values;
   values.emplace_back(column);
   integer_schema_ = std::make_unique<Schema>(Schema(values));
+  transaction_ = exec_ctx->GetTransaction();
+  exec_ctx_->GetLockManager()->LockTable(transaction_, LockManager::LockMode::INTENTION_EXCLUSIVE, table_info_->oid_);
 }
 
 void DeleteExecutor::Init() {}
@@ -38,6 +40,9 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   std::vector<Value> values;
 
   int delete_row = NextHelper();
+  if (delete_row == -1) {
+    return false;
+  }
   Value row_affect_num(INTEGER, delete_row);
   values.emplace_back(row_affect_num);
   Tuple res_tuple(values, &GetOutputSchema());
@@ -53,9 +58,12 @@ auto DeleteExecutor::NextHelper() -> int {
   bool child_res = child_executor_->Next(&child_tuple, &child_rid);
   while (child_res) {
     delete_row++;
+    bool lock_res = exec_ctx_->GetLockManager()->LockRow(transaction_, LockManager::LockMode::EXCLUSIVE,
+                                                         table_info_->oid_, child_rid);
+    if (!lock_res) {
+      return -1;
+    }
     table_info_->table_->MarkDelete(child_rid, exec_ctx_->GetTransaction());
-    // std::cout << "child_tuple:" << child_tuple.ToString(&child_executor_->GetOutputSchema()) << std::endl;
-    // std::cout << "child_rid:" << child_rid.ToString() << std::endl;
     auto table_indexes_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
     if (!table_indexes_info.empty()) {
       for (auto &index_info : table_indexes_info) {

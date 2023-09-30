@@ -69,6 +69,7 @@ void TransactionManager::Abort(Transaction *txn) {
   txn->SetState(TransactionState::ABORTED);
   // Rollback before releasing the lock.
   auto table_write_set = txn->GetWriteSet();
+  std::cout << "table_write_set" << table_write_set->size();
   while (!table_write_set->empty()) {
     auto &item = table_write_set->back();
     auto *table = item.table_;
